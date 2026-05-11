@@ -1,0 +1,136 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { SEO } from "../components/SEO";
+import { MasonryScroll, MASONRY_PHOTOS } from "../components/MasonryScroll";
+import { Lightbox } from "../components/Lightbox";
+
+const GRID_PHOTOS = [
+  "/images/sesion1-039.jpg", "/images/sesion1-040.jpg", "/images/sesion1-041.jpg",
+  "/images/sesion1-042.jpg", "/images/sesion1-043.jpg", "/images/sesion1-044.jpg",
+  "/images/sesion1-045.jpg", "/images/sesion1-046.jpg", "/images/sesion1-047.jpg",
+  "/images/sesion1-048.jpg", "/images/sesion1-049.jpg", "/images/sesion1-050.jpg",
+  "/images/sesion1-051.jpg", "/images/sesion1-052.jpg", "/images/sesion1-053.jpg",
+  "/images/sesion1-054.jpg", "/images/sesion1-055.jpg", "/images/sesion1-056.jpg",
+  "/images/algarrobo-11.jpg", "/images/algarrobo-12.jpg", "/images/algarrobo-13.jpg",
+  "/images/algarrobo-14.jpg", "/images/algarrobo-15.jpg", "/images/algarrobo-16.jpg",
+];
+
+const ALL_PHOTOS = [
+  ...MASONRY_PHOTOS,
+  ...GRID_PHOTOS.map((src, i) => ({
+    src,
+    title: `Foto ${String(MASONRY_PHOTOS.length + i + 1).padStart(2, "0")}`,
+    subtitle: "CeroCuarenta · 2024",
+  })),
+];
+
+export const Lookbook: React.FC = () => {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  return (
+    <div className="bg-white min-h-screen">
+      <SEO title="Galería" description="Galería editorial Drop 01 — CeroCuarenta Santiago" />
+
+      {/* ── HEADER ──────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-8 pt-20 pb-12">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-court-olive block mb-4">
+              Editorial · Santiago, Chile · 2024
+            </span>
+            <h1 className="text-6xl md:text-8xl font-serif italic tracking-tighter text-court-ink leading-none">
+              Galería<br />Drop 01
+            </h1>
+          </div>
+          <div className="max-w-sm">
+            <p className="text-court-ink/50 text-base leading-relaxed font-medium mb-4">
+              Una exploración visual de nuestra primera colección. Sesión en Algarrobo, capturando la esencia del tenis en el paisaje chileno.
+            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-court-ink/30">
+              {ALL_PHOTOS.length} fotografías · Haz clic para ampliar
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MASONRY HORIZONTAL ANIMADO ───────────────────────────── */}
+      <div className="py-4">
+        <MasonryScroll onPhotoClick={setLightboxIndex} height={568} />
+      </div>
+
+      {/* ── MARQUEE ─────────────────────────────────────────────── */}
+      <div className="bg-court-ink text-white py-5 overflow-hidden mt-4">
+        <div className="animate-marquee flex">
+          {[...Array(8)].map((_, i) => (
+            <span key={i} className="text-[10px] font-bold uppercase tracking-[0.4em] mx-10 whitespace-nowrap shrink-0">
+              GAME, SET AND WTF! · ALGARROBO, CHILE · DROP 01 · CEROCUARENTA.CL ·
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── GRID MASONRY CSS ────────────────────────────────────── */}
+      <section className="max-w-7xl mx-auto px-8 py-16">
+        <div className="mb-10">
+          <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-court-olive block mb-3">Colección completa</span>
+          <h2 className="text-4xl md:text-5xl font-serif italic">Todas las fotos</h2>
+        </div>
+
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-3">
+          {GRID_PHOTOS.map((src, i) => (
+            <div key={i} className="break-inside-avoid mb-3">
+              <button
+                onClick={() => setLightboxIndex(MASONRY_PHOTOS.length + i)}
+                className="group relative w-full overflow-hidden rounded-xl block focus:outline-none focus-visible:ring-2 focus-visible:ring-court-olive"
+              >
+                <img
+                  src={src}
+                  alt={`Foto ${MASONRY_PHOTOS.length + i + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── QUOTE ───────────────────────────────────────────────── */}
+      <section className="border-t border-gray-100 py-24 px-8 text-center">
+        <blockquote className="font-serif italic text-3xl md:text-5xl text-court-ink/30 max-w-3xl mx-auto leading-tight mb-10">
+          "Capturando la esencia del tenis en el paisaje de Chile. Una mezcla de tradición y modernidad."
+        </blockquote>
+        <div className="flex justify-center gap-10 text-[10px] font-bold uppercase tracking-[0.3em] text-court-ink/20">
+          <span>Fotografía: Court Studio</span>
+          <span>Locación: Algarrobo</span>
+          <span>Temporada: 2024</span>
+        </div>
+      </section>
+
+      {/* ── CTA ─────────────────────────────────────────────────── */}
+      <section className="bg-court-olive text-white py-20 px-8 text-center">
+        <h2 className="text-4xl md:text-6xl font-serif italic mb-6">¿Te gustó lo que viste?</h2>
+        <p className="text-white/70 max-w-md mx-auto mb-10 font-medium">
+          Cada pieza de esta sesión está disponible en nuestra colección.
+        </p>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-3 bg-white text-court-olive px-10 py-4 rounded-full font-bold uppercase tracking-widest hover:bg-court-ink hover:text-white transition-all"
+        >
+          Ver Colección <ArrowRight size={16} />
+        </Link>
+      </section>
+
+      {/* ── LIGHTBOX ────────────────────────────────────────────── */}
+      <Lightbox
+        photos={ALL_PHOTOS}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChange={setLightboxIndex}
+      />
+    </div>
+  );
+};

@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-court-cream: #FDFDFD;
+  --color-court-olive: #5A5A40;
+  --color-court-ink: #141414;
+}
+
+@layer base {
+  body {
+    @apply antialiased text-court-ink bg-court-cream font-sans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif italic;
+  }
+}
+
+@layer utilities {
+  .text-stroke {
+    -webkit-text-stroke: 1px black;
+    color: transparent;
+  }
+  .text-stroke-white {
+    -webkit-text-stroke: 1px white;
+    color: transparent;
+  }
+  .animate-marquee {
+    display: flex;
+    animation: marquee 60s linear infinite;
+    width: max-content;
+  }
+  .animate-gallery {
+    animation: scroll-gallery 55s linear infinite;
+    will-change: transform;
+  }
+  .animate-gallery:hover {
+    animation-play-state: paused;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes scroll-gallery {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
