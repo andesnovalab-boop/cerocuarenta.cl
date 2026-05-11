@@ -105,7 +105,7 @@ drop policy if exists "orders_insert_auth"  on orders;
 drop policy if exists "admin_full_orders"   on orders;
 
 create policy "orders_own"         on orders for select using (auth.uid() = user_id);
-create policy "orders_insert_auth" on orders for insert with check (auth.uid() = user_id);
+create policy "orders_insert_auth" on orders for insert with check (auth.uid() = user_id OR user_id IS NULL);
 create policy "admin_full_orders"  on orders for all using (
   exists (select 1 from users where id = auth.uid() and role = 'admin')
 );

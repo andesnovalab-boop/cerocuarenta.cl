@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC = () => {
 
   // ── Users ──
   const toggleAdmin = async (userId: string, current: string) => {
-    const newRole = current === "admin" ? "user" : "admin";
+    const newRole = current === "admin" ? "customer" : "admin";
     await supabase.from("users").update({ role: newRole }).eq("id", userId);
     toast.success(`Rol → ${newRole}`); fetchAll();
   };
@@ -553,11 +553,11 @@ export const AdminDashboard: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-court-ink/60">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest ${u.role === "admin" ? "bg-court-olive text-white" : "bg-gray-100 text-gray-500"}`}>
-                      {u.role || "user"}
+                      {u.role || "customer"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <button onClick={() => toggleAdmin(u.id, u.role || "user")} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-court-olive hover:text-court-ink transition-all">
+                    <button onClick={() => toggleAdmin(u.id, u.role || "customer")} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-court-olive hover:text-court-ink transition-all">
                       {u.role === "admin" ? <ShieldCheck size={13} /> : <UserCheck size={13} />}
                       {u.role === "admin" ? "Quitar Admin" : "Hacer Admin"}
                     </button>

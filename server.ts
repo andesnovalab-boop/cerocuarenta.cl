@@ -145,7 +145,7 @@ async function startServer() {
             }
 
             await supabaseAdmin.from("emails").insert({
-              to: order.customer_email,
+              to_email: order.customer_email,
               subject: `Confirmación de Pedido #${orderId} - CeroCuarenta`,
               template: "order_confirmation",
               order_id: orderId,
