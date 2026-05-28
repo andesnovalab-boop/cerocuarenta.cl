@@ -24,6 +24,8 @@ import { Terms, Privacy } from "./pages/Legal";
 import { ElRaquetero } from "./pages/ElRaquetero";
 import { BlogPostPage } from "./pages/BlogPostPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ScrollToTop } from "./components/ScrollToTop";
+import { TennisCursor } from "./components/TennisCursor";
 
 export default function App() {
   return (
@@ -31,6 +33,8 @@ export default function App() {
       <AuthProvider>
       <CartProvider>
         <Router>
+          <ScrollToTop />
+          <TennisCursor />
           <div className="min-h-screen bg-court-cream font-sans selection:bg-court-olive selection:text-white">
             <Navbar />
             <main className="pb-20">

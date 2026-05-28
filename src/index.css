@@ -1,9 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400..900;1,400..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+@font-face {
+  font-family: "Filena";
+  src: url("/fonts/Filena-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Filena";
+  src: url("/fonts/Filena-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 @import "tailwindcss";
 
 @theme {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", serif;
+  --font-bitter: "Bitter", serif;
+  --font-filena: "Filena", serif;
   --font-mono: "JetBrains Mono", monospace;
 
   --color-court-cream: #FDFDFD;
@@ -11,7 +28,20 @@
   --color-court-ink: #141414;
 }
 
+@keyframes tennisBounce {
+  0%   { transform: translateY(0)     scaleX(1)   scaleY(1);   }
+  20%  { transform: translateY(-22px) scaleX(1)   scaleY(1);   }
+  35%  { transform: translateY(0)     scaleX(1.25) scaleY(0.75); }
+  45%  { transform: translateY(-13px) scaleX(1)   scaleY(1);   }
+  58%  { transform: translateY(0)     scaleX(1.15) scaleY(0.85); }
+  68%  { transform: translateY(-6px)  scaleX(1)   scaleY(1);   }
+  78%  { transform: translateY(0)     scaleX(1.08) scaleY(0.93); }
+  88%  { transform: translateY(-2px)  scaleX(1)   scaleY(1);   }
+  100% { transform: translateY(0)     scaleX(1)   scaleY(1);   }
+}
+
 @layer base {
+  * { cursor: none !important; }
   body {
     @apply antialiased text-court-ink bg-court-cream font-sans;
   }
