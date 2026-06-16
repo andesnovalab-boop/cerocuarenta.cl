@@ -61,6 +61,63 @@ function validateMPSignature(req: express.Request): boolean {
   return hmac === v1;
 }
 
+// ── Envío de email de confirmación vía Resend ───────────────
+// Devuelve el estado real para registrarlo en la tabla `emails`.
+// Si no hay RESEND_API_KEY configurada, no inventa un "sent": devuelve "skipped".
+async function sendOrderEmail(order: any): Promise<"sent" | "failed" | "skipped"> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM || "CeroCuarenta <onboarding@resend.dev>";
+  if (!apiKey || !order?.customer_email) return "skipped";
+
+  const clp = (n: number) => `$${Number(n || 0).toLocaleString("es-CL")}`;
+  const rows = (order.items || [])
+    .map((i: any) => `
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;">${i.name}${i.selectedSize ? ` · Talla ${i.selectedSize}` : ""}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">x${i.quantity}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${clp(i.price * i.quantity)}</td>
+      </tr>`)
+    .join("");
+
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;">
+    <div style="background:#0a0a0a;padding:28px;text-align:center;">
+      <h1 style="color:#d4ff3f;margin:0;font-style:italic;">CeroCuarenta</h1>
+    </div>
+    <div style="padding:28px;">
+      <h2 style="margin-top:0;">¡Gracias por tu compra! 🎾</h2>
+      <p>Tu pedido <b>#${order.id}</b> fue confirmado y está en preparación.</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;">${rows}
+        <tr><td style="padding:10px 0;" colspan="2"><b>Envío</b></td><td style="padding:10px 0;text-align:right;">${clp(order.shipping_cost)}</td></tr>
+        <tr><td style="padding:10px 0;font-size:16px;" colspan="2"><b>Total</b></td><td style="padding:10px 0;text-align:right;font-size:16px;"><b>${clp(order.total)}</b></td></tr>
+      </table>
+      <p style="color:#666;font-size:13px;">Te avisaremos cuando tu pedido sea despachado. Cualquier duda, responde a este correo.</p>
+    </div>
+    <div style="background:#f5f5f5;padding:16px;text-align:center;color:#999;font-size:12px;">CeroCuarenta · Santiago, Chile</div>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: order.customer_email,
+        subject: `Confirmación de tu pedido #${order.id} — CeroCuarenta`,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      console.error("Resend error:", res.status, await res.text());
+      return "failed";
+    }
+    return "sent";
+  } catch (err) {
+    console.error("Resend exception:", err);
+    return "failed";
+  }
+}
+
 // ── Marcar orden pagada: idempotente y atómico ──────────────
 // El guard `eq("status","pending")` garantiza que SOLO el primer
 // llamado que transiciona pending→paid descuente stock y encole el
@@ -104,14 +161,15 @@ async function markOrderPaid(orderId: string, paymentId: string, paymentData?: a
     }
   }
 
-  // Encolar email de confirmación
+  // Enviar email de confirmación y registrar el estado REAL del envío
+  const emailStatus = await sendOrderEmail(order);
   await supabaseAdmin.from("emails").insert({
     to_email: order.customer_email,
     subject: `Confirmación de Pedido #${orderId} - CeroCuarenta`,
     template: "order_confirmation",
     order_id: orderId,
-    sent_at: new Date().toISOString(),
-    status: "sent",
+    sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
+    status: emailStatus,
   });
 
   return { justPaid: true as const, order };
@@ -179,7 +237,7 @@ async function startServer() {
       res.setHeader("Access-Control-Allow-Origin", origin);
     }
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
   });
@@ -249,6 +307,8 @@ async function startServer() {
     try {
       const { base64, fileName, mimeType } = req.body;
       if (!base64 || !fileName) return res.status(400).json({ error: "base64 y fileName requeridos" });
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+      if (!allowedTypes.includes(mimeType)) return res.status(415).json({ error: "Tipo de archivo no permitido (solo imágenes)" });
       if (base64.length > 10 * 1024 * 1024) return res.status(413).json({ error: "Imagen demasiado grande (máx 7.5 MB)" });
       const buffer = Buffer.from(base64, "base64");
       const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${fileName}`;
@@ -321,7 +381,7 @@ async function startServer() {
       // Fetch order from DB — never trust client-provided totals or items
       const { data: order, error: orderErr } = await supabaseAdmin
         .from('orders')
-        .select('id, items, shipping_cost, customer_email, status')
+        .select('id, items, shipping_cost, customer_email, status, shipping_address')
         .eq('id', orderId)
         .single();
 
@@ -357,12 +417,38 @@ async function startServer() {
         };
       });
 
-      if (Number(order.shipping_cost) > 0) {
+      // Recalcular envío server-side — nunca confiar en el shipping_cost del cliente.
+      // Replica la regla del checkout: gratis sobre el umbral, si no, tarifa por zona.
+      const subtotalReal = mpItems.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
+
+      const { data: shippingSettings } = await supabaseAdmin
+        .from('shipping_settings')
+        .select('rm, region, free_shipping_threshold')
+        .limit(1)
+        .single();
+
+      const threshold = shippingSettings?.free_shipping_threshold;
+      let shippingCost = 0;
+      if (!(threshold && subtotalReal >= Number(threshold))) {
+        const region = (order.shipping_address as any)?.region;
+        const isRM = region === 'Región Metropolitana de Santiago';
+        shippingCost = isRM
+          ? Number((shippingSettings?.rm as any)?.price ?? 3990)
+          : Number((shippingSettings?.region as any)?.price ?? 6990);
+      }
+
+      // Persistir los valores reales en la orden (integridad de registros/reportes)
+      await supabaseAdmin
+        .from('orders')
+        .update({ subtotal: subtotalReal, shipping_cost: shippingCost, total: subtotalReal + shippingCost })
+        .eq('id', orderId);
+
+      if (shippingCost > 0) {
         mpItems.push({
           id: 'shipping',
           title: 'Envío',
           quantity: 1,
-          unit_price: Number(order.shipping_cost),
+          unit_price: shippingCost,
           currency_id: 'CLP'
         });
       }

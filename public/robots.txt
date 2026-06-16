@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Áreas privadas / transaccionales — no indexar
+Disallow: /admin
+Disallow: /checkout
+Disallow: /success
+Disallow: /orders
+Disallow: /login
+Disallow: /cart
+
+Sitemap: https://cerocuarenta.cl/sitemap.xml

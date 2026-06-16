@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
+    "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "og": "node scripts/generate-og.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
