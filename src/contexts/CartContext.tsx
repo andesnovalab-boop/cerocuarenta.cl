@@ -25,10 +25,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToCart = (product: Product, selectedSize: string) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id && item.selectedSize === selectedSize);
+      const sizeStock = product.sizes?.[selectedSize] ?? product.stock ?? 0;
+
       if (existing) {
+        if (existing.quantity >= sizeStock) return prev; // no exceder stock
         return prev.map((item) =>
-          (item.id === product.id && item.selectedSize === selectedSize) 
-            ? { ...item, quantity: item.quantity + 1 } 
+          item.id === product.id && item.selectedSize === selectedSize
+            ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
@@ -46,7 +49,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     setCart((prev) =>
-      prev.map((item) => (item.id === productId && item.selectedSize === selectedSize ? { ...item, quantity } : item))
+      prev.map((item) => {
+        if (item.id !== productId || item.selectedSize !== selectedSize) return item;
+        const maxStock = item.sizes?.[selectedSize] ?? item.stock ?? Infinity;
+        return { ...item, quantity: Math.min(quantity, maxStock) };
+      })
     );
   };
 

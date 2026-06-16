@@ -1,11 +1,22 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
+import { supabase } from "../supabase";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
 
 export const CartPage: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, total } = useCart();
   const navigate = useNavigate();
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("shipping_settings")
+      .select("free_shipping_threshold")
+      .limit(1)
+      .single()
+      .then(({ data }) => { if (data) setFreeShippingThreshold(data.free_shipping_threshold); });
+  }, []);
 
   if (cart.length === 0) {
     return (
@@ -13,7 +24,7 @@ export const CartPage: React.FC = () => {
         <div className="w-24 h-24 bg-court-olive/5 rounded-full flex items-center justify-center mx-auto mb-8 text-court-olive/20">
           <ShoppingBag size={48} />
         </div>
-        <h1 className="text-5xl font-serif italic mb-6">Tu carrito está vacío</h1>
+        <h1 className="text-5xl font-bitter italic mb-6">Tu carrito está vacío</h1>
         <p className="text-court-ink/40 mb-12 max-w-md mx-auto font-medium">
           Parece que aún no has añadido nada. Explora nuestra última colección y encuentra tu estilo perfecto.
         </p>
@@ -29,19 +40,19 @@ export const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-24 bg-court-cream min-h-screen">
-      <h1 className="text-5xl md:text-7xl font-serif italic tracking-tighter text-court-ink mb-16 leading-none">TU CARRITO</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-24 bg-court-cream min-h-screen">
+      <h1 className="text-4xl sm:text-5xl md:text-7xl font-bitter italic tracking-tighter text-court-ink mb-8 sm:mb-16 leading-none">TU CARRITO</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-24">
         <div className="lg:col-span-2 space-y-12">
           {cart.map((item) => (
             <div key={`${item.id}-${item.selectedSize}`} className="flex gap-8 pb-12 border-b border-court-olive/10 group">
               <div className="w-32 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100 shrink-0 shadow-lg">
-                <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                <img src={item.images?.[0] || "/images/algarrobo-0.jpg"} alt={item.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex-grow py-2">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-2xl font-serif italic">{item.name}</h3>
+                  <h3 className="text-2xl font-bitter italic">{item.name}</h3>
                   <button 
                     onClick={() => removeFromCart(item.id, item.selectedSize)}
                     className="text-court-ink/20 hover:text-red-400 transition-all"
@@ -94,7 +105,7 @@ export const CartPage: React.FC = () => {
 
             <div className="h-px bg-court-olive/10 my-8"></div>
 
-            <div className="flex justify-between text-4xl font-serif italic mb-12">
+            <div className="flex justify-between text-4xl font-bitter italic mb-12">
               <span>TOTAL</span>
               <span className="text-court-olive">${total.toLocaleString("es-CL")}</span>
             </div>
@@ -107,7 +118,9 @@ export const CartPage: React.FC = () => {
             </button>
 
             <p className="text-[10px] text-center text-court-ink/40 font-medium mt-8 leading-relaxed uppercase tracking-widest">
-              Envío gratis en compras sobre $80.000
+              {freeShippingThreshold
+                ? `Envío gratis en compras sobre $${freeShippingThreshold.toLocaleString("es-CL")}`
+                : "Envío calculado en checkout"}
             </p>
           </div>
         </div>

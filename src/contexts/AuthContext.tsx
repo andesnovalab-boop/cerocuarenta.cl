@@ -2,8 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "juanplazabravo@gmail.com";
-
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -25,33 +23,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = async (user: User) => {
-    if (user.email === ADMIN_EMAIL) {
-      setIsAdmin(true);
-      return;
-    }
-    const { data } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    setIsAdmin(data?.role === "admin");
-  };
-
   useEffect(() => {
+    let mounted = true;
+
+    const checkAdmin = async (user: User) => {
+      const { data } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!mounted) return;
+
+      if (!data) {
+        await supabase.from("users").insert({
+          id: user.id,
+          email: user.email,
+          display_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario",
+          role: "customer",
+          created_at: new Date().toISOString(),
+        });
+        if (mounted) setIsAdmin(false);
+      } else {
+        if (mounted) setIsAdmin(data.role === "admin");
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
-      if (session?.user) checkAdmin(session.user).finally(() => setLoading(false));
+      if (session?.user) checkAdmin(session.user).finally(() => { if (mounted) setLoading(false); });
       else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setSession(session);
       if (session?.user) checkAdmin(session.user);
       else setIsAdmin(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

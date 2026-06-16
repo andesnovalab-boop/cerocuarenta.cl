@@ -33,21 +33,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     <div className="group relative flex flex-col">
       <Link to={`/product/${product.id}`} className="block">
         {/* Image Container */}
-        <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-gray-100 mb-4">
+        <div className="relative aspect-square overflow-hidden rounded-2xl bg-white mb-4">
           <img
-            src={product.images?.[activeImg] || product.images?.[0] || "/images/algarrobo-0.jpg"}
+            src={product.images?.[0] || "/images/algarrobo-0.jpg"}
             alt={product.name}
-            className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${
-              isOutOfStock ? "grayscale opacity-60" : ""
+            className={`absolute inset-0 w-full h-full object-contain p-2 transition-opacity duration-500 ${
+              isOutOfStock ? "grayscale opacity-40" : "opacity-100 group-hover:opacity-0"
             }`}
             loading="lazy"
           />
-
           {product.images?.[1] && (
             <img
               src={product.images[1]}
-              alt={`${product.name} vista 2`}
-              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              alt={`${product.name} dorso`}
+              className="absolute inset-0 w-full h-full object-contain p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
               loading="lazy"
             />
           )}
@@ -70,18 +69,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
           </div>
 
-          {/* Image dots */}
-          {product.images?.length > 1 && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              {product.images.slice(0, 4).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={(e) => { e.preventDefault(); setActiveImg(i); }}
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${
-                    activeImg === i ? "bg-white scale-125" : "bg-white/50"
-                  }`}
-                />
-              ))}
+          {/* Frente / Dorso label */}
+          {product.images?.[1] && (
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[8px] font-bold uppercase tracking-widest text-court-ink/40 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-full">
+                Dorso
+              </span>
             </div>
           )}
 
@@ -113,20 +106,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Info */}
         <div className="px-1">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-court-olive/80 mb-1">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-court-olive/80 mb-1">
             {product.category}
           </p>
-          <h3 className="text-[15px] font-semibold text-court-ink mb-1.5 group-hover:text-court-olive transition-colors leading-snug">
+          <h3 className="text-[18px] font-semibold text-court-ink mb-1.5 group-hover:text-court-olive transition-colors leading-snug line-clamp-2">
             {product.name}
           </h3>
           <div className="flex items-center justify-between">
-            <p className="text-[14px] font-bold text-court-ink">
+            <p className="text-[14px] font-bold uppercase tracking-widest text-court-ink/50">
               ${product.price.toLocaleString("es-CL")}
             </p>
             {!isOutOfStock && !hasMultipleSizes && (
               <button
                 onClick={handleQuickAdd}
-                className="text-[9px] font-bold uppercase tracking-widest text-court-olive hover:text-court-ink transition-colors"
+                className="text-[11px] font-bold uppercase tracking-widest text-court-olive hover:text-court-ink transition-colors"
               >
                 + Carrito
               </button>

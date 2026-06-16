@@ -71,7 +71,7 @@ export const BlogPostPage: React.FC = () => {
         <span className={`text-[9px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full inline-block mb-6 ${CAT_COLORS[post.category] ?? "bg-gray-100 text-gray-600"}`}>
           {post.category}
         </span>
-        <h1 className="font-serif italic text-5xl md:text-7xl text-court-ink leading-[1.05] tracking-tight mb-6">
+        <h1 className="font-bitter italic text-3xl sm:text-5xl md:text-7xl text-court-ink leading-[1.05] tracking-tight mb-6">
           {post.title}
         </h1>
         <p className="text-court-ink/50 text-lg leading-relaxed font-medium mb-8 max-w-2xl">
@@ -97,7 +97,7 @@ export const BlogPostPage: React.FC = () => {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-8 pb-24">
-        <div className="prose prose-lg prose-headings:font-serif prose-headings:italic prose-headings:text-court-ink prose-p:text-court-ink/60 prose-p:leading-relaxed prose-p:font-medium prose-a:text-court-olive prose-strong:text-court-ink prose-img:rounded-2xl">
+        <div className="prose prose-lg prose-headings:font-bitter prose-headings:italic prose-headings:text-court-ink prose-p:text-court-ink/60 prose-p:leading-relaxed prose-p:font-medium prose-a:text-court-olive prose-strong:text-court-ink prose-img:rounded-2xl">
           <ReactMarkdown>{post.content}</ReactMarkdown>
         </div>
       </div>
@@ -122,7 +122,7 @@ export const BlogPostPage: React.FC = () => {
                   <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full w-fit mb-2 ${CAT_COLORS[r.category] ?? ""}`}>
                     {r.category}
                   </span>
-                  <h4 className="font-serif italic text-xl text-court-ink group-hover:text-court-olive transition-colors line-clamp-2">
+                  <h4 className="font-bitter italic text-xl text-court-ink group-hover:text-court-olive transition-colors line-clamp-2">
                     {r.title}
                   </h4>
                 </Link>

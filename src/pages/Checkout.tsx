@@ -16,6 +16,7 @@ export const Checkout: React.FC = () => {
   const { user, loading: loadingAuth } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [step, setStep] = useState<CheckoutStep>("identification");
   const [guestEmail, setGuestEmail] = useState("");
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
@@ -118,36 +119,71 @@ export const Checkout: React.FC = () => {
           setShippingSettings(data as ShippingSettings);
         }
       } catch (error) {
-        console.error("Error fetching shipping settings:", error);
+        if (import.meta.env.DEV) console.error("Error fetching shipping settings:", error);
       }
     };
     fetchSettings();
   }, []);
 
+  const [prefilled, setPrefilled] = useState(false);
+
   useEffect(() => {
-    if (user && step === "identification") {
-      setShipping(prev => ({ ...prev, full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || "" }));
-      setStep("shipping");
-    }
-  }, [user, step]);
+    if (!user || prefilled) return;
+    setPrefilled(true);
+
+    const loadSavedShipping = async () => {
+      // 1) Perfil del usuario (phone, rut guardados)
+      const { data: profile } = await supabase
+        .from("users")
+        .select("display_name, phone, rut")
+        .eq("id", user.id)
+        .single();
+
+      // 2) Última orden del usuario (dirección completa más reciente)
+      const { data: lastOrder } = await supabase
+        .from("orders")
+        .select("shipping_address")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const addr = lastOrder?.shipping_address || {};
+      setShipping(prev => ({
+        ...prev,
+        full_name: addr.full_name || profile?.display_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "",
+        rut: addr.rut || profile?.rut || "",
+        phone: addr.phone || profile?.phone || "",
+        region: addr.region || "",
+        commune: addr.commune || "",
+        street: addr.street || "",
+        street_number: addr.street_number || "",
+        apartment: addr.apartment || "",
+        notes: addr.notes || "",
+      }));
+    };
+
+    loadSavedShipping();
+    if (step === "identification") setStep("shipping");
+  }, [user, prefilled, step]);
 
 
   const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
     try {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/checkout'
-        }
+        options: { redirectTo: window.location.origin + '/checkout' }
       });
     } catch (error) {
       toast.error("Error al iniciar sesión");
+      setGoogleLoading(false);
     }
   };
 
   const handleGuestContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestEmail.includes("@")) {
+    if (!validateEmail(guestEmail)) {
       toast.error("Ingresa un email válido");
       return;
     }
@@ -209,51 +245,57 @@ export const Checkout: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user?.id || null,
-          customer_email: user?.email || guestEmail,
-          items: cart,
-          subtotal: total,
-          shipping_cost: shippingMethod.price,
-          total: total + shippingMethod.price,
-          status: "pending",
-          shipping_address: {
-            ...shipping,
-            address: [shipping.street, shipping.street_number, shipping.apartment].filter(Boolean).join(", "),
-          },
-          shipping_method: shippingMethod.name
-        })
-        .select()
-        .single();
+      const customerEmail = user?.email || guestEmail;
 
-      if (orderError) throw orderError;
+      // Guardar datos de contacto en el perfil del usuario logueado (para futuras compras)
+      if (user?.id) {
+        supabase.from("users")
+          .update({ phone: shipping.phone, rut: shipping.rut, display_name: shipping.full_name })
+          .eq("id", user.id)
+          .then(() => {});
+      }
 
-      // Create MercadoPago preference
-      const response = await fetch("/api/checkout/mp", {
+      // Crear orden en el servidor (service role bypasea RLS)
+      const orderRes = await fetch("/api/checkout/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderId: orderData.id,
+          customerEmail,
+          userId: user?.id || null,
           items: cart,
-          customerEmail: user?.email || guestEmail,
+          subtotal: total,
+          shippingCost: shippingMethod.price,
           total: total + shippingMethod.price,
+          shippingAddress: {
+            ...shipping,
+            address: [shipping.street, shipping.street_number, shipping.apartment].filter(Boolean).join(", "),
+          },
+          shippingMethod: shippingMethod.name,
         }),
       });
 
-      const data = await response.json();
+      const orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.orderId) throw new Error(orderData.error || "No se pudo crear la orden");
 
-      if (data.url) {
-        window.location.href = data.url;
+      // Crear preferencia MercadoPago
+      const mpRes = await fetch("/api/checkout/mp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: orderData.orderId, customerEmail }),
+      });
+
+      const mpData = await mpRes.json();
+
+      if (mpData.url) {
+        window.location.href = mpData.url;
       } else {
-        toast.error(data.error || "Error al iniciar el pago");
+        toast.error(mpData.error || "Error al iniciar el pago");
         setLoading(false);
       }
 
     } catch (error: any) {
       console.error("Checkout Error:", error);
-      toast.error("Error al procesar la orden");
+      toast.error(error.message || "Error al procesar la orden");
       setLoading(false);
     }
   };
@@ -266,9 +308,9 @@ export const Checkout: React.FC = () => {
   const selectedRegion = CHILE_REGIONS.find(r => r.name === shipping.region);
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-24 bg-court-cream min-h-screen">
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-24 bg-court-cream min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-baseline mb-16 gap-8">
-        <h1 className="text-5xl md:text-7xl font-serif italic tracking-tighter text-court-ink leading-none">CHECKOUT</h1>
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bitter italic tracking-tighter text-court-ink leading-none">CHECKOUT</h1>
         
         {/* Progress Bar */}
         <div className="flex items-center gap-4">
@@ -295,16 +337,18 @@ export const Checkout: React.FC = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-12"
               >
-                <div className="bg-white p-12 rounded-[3rem] border border-court-olive/10 shadow-xl">
-                  <h2 className="text-2xl font-serif italic mb-8">Identificación</h2>
+                <div className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-court-olive/10 shadow-xl">
+                  <h2 className="text-2xl font-bitter italic mb-8">Identificación</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <p className="text-sm text-court-ink/60 font-medium">Inicia sesión para una experiencia más rápida y seguimiento de tus pedidos.</p>
-                      <button 
+                      <button
                         onClick={handleGoogleLogin}
-                        className="w-full flex items-center justify-center gap-4 px-8 py-4 bg-white border border-court-olive/20 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-court-olive/5 transition-all"
+                        disabled={googleLoading}
+                        className="w-full flex items-center justify-center gap-4 px-8 py-4 bg-white border border-court-olive/20 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-court-olive/5 transition-all disabled:opacity-60"
                       >
-                        <LogIn size={18} /> Iniciar con Google
+                        {googleLoading ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
+                        {googleLoading ? "Conectando..." : "Iniciar con Google"}
                       </button>
                       <button 
                         onClick={() => navigate("/login")}
@@ -350,12 +394,12 @@ export const Checkout: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
               >
-                <form onSubmit={handleShippingSubmit} className="bg-white p-12 rounded-[3rem] border border-court-olive/10 shadow-xl space-y-8">
+                <form onSubmit={handleShippingSubmit} className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-court-olive/10 shadow-xl space-y-8">
                   <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 bg-court-olive/10 rounded-full flex items-center justify-center text-court-olive">
                       <MapPin size={24} />
                     </div>
-                    <h2 className="text-2xl font-serif italic">Datos de Envío</h2>
+                    <h2 className="text-2xl font-bitter italic">Datos de Envío</h2>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -509,12 +553,12 @@ export const Checkout: React.FC = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                <div className="bg-white p-12 rounded-[3rem] border border-court-olive/10 shadow-xl">
+                <div className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-court-olive/10 shadow-xl">
                   <div className="flex items-center gap-4 mb-12">
                     <div className="w-12 h-12 bg-court-olive/10 rounded-full flex items-center justify-center text-court-olive">
                       <Truck size={24} />
                     </div>
-                    <h2 className="text-2xl font-serif italic">Método de Envío</h2>
+                    <h2 className="text-2xl font-bitter italic">Método de Envío</h2>
                   </div>
 
                   <div className="space-y-4">
@@ -545,7 +589,7 @@ export const Checkout: React.FC = () => {
                             </p>
                           </div>
                         </div>
-                        <span className="text-xl font-serif italic">
+                        <span className="text-xl font-bitter italic">
                           {option.price === 0 ? "Gratis" : `$${option.price.toLocaleString("es-CL")}`}
                         </span>
                       </button>
@@ -588,11 +632,11 @@ export const Checkout: React.FC = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                <div className="bg-white p-12 rounded-[3rem] border border-court-olive/10 shadow-xl text-center">
+                <div className="bg-white p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-court-olive/10 shadow-xl text-center">
                   <div className="w-20 h-20 bg-court-olive/10 rounded-full flex items-center justify-center text-court-olive mx-auto mb-8">
                     <CreditCard size={40} />
                   </div>
-                  <h2 className="text-4xl font-serif italic mb-6">Resumen Final</h2>
+                  <h2 className="text-4xl font-bitter italic mb-6">Resumen Final</h2>
                   <p className="text-court-ink/60 mb-12 max-w-md mx-auto">Estás a un paso de completar tu pedido. Al hacer clic en el botón, serás redirigido a nuestra pasarela de pago segura.</p>
                   
                   <div className="bg-court-cream/50 p-8 rounded-[2rem] border border-court-olive/10 mb-12 text-left space-y-4">
@@ -605,7 +649,7 @@ export const Checkout: React.FC = () => {
                       <span>${shippingMethod?.price.toLocaleString("es-CL")}</span>
                     </div>
                     <div className="h-px bg-court-olive/10 my-4"></div>
-                    <div className="flex justify-between text-3xl font-serif italic text-court-ink">
+                    <div className="flex justify-between text-3xl font-bitter italic text-court-ink">
                       <span>Total a Pagar</span>
                       <span className="text-court-olive">${(total + (shippingMethod?.price || 0)).toLocaleString("es-CL")}</span>
                     </div>
@@ -631,7 +675,7 @@ export const Checkout: React.FC = () => {
 
         {/* Order Summary Sidebar */}
         <div className="space-y-8">
-          <div className="bg-white p-10 rounded-[3rem] border border-court-olive/10 shadow-xl sticky top-24">
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-court-olive/10 shadow-xl sticky top-24">
             <h2 className="text-xl font-bold uppercase tracking-widest text-court-ink mb-8">Tu Carrito</h2>
             <div className="space-y-6 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
               {cart.map((item) => (
@@ -661,7 +705,7 @@ export const Checkout: React.FC = () => {
                   <span>${shippingMethod.price.toLocaleString("es-CL")}</span>
                 </div>
               )}
-              <div className="flex justify-between text-2xl font-serif italic text-court-ink pt-2">
+              <div className="flex justify-between text-2xl font-bitter italic text-court-ink pt-2">
                 <span>Total</span>
                 <span className="text-court-olive">${(total + (shippingMethod?.price || 0)).toLocaleString("es-CL")}</span>
               </div>

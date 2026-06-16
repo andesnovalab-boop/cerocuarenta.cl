@@ -1,19 +1,34 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import { Product, Order, ProductCategory, ShippingSettings, BlogPost, BlogCategory } from "../types";
+import { Product, Order, CartItem, ProductCategory, ShippingSettings, BlogPost, BlogCategory, UserProfile } from "../types";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Edit2, Package, ShoppingCart, Users, Loader2, Upload,
   Image as ImageIcon, ShieldCheck, UserCheck, Settings, Save, FileText,
   Eye, EyeOff, Star, ChevronDown, ChevronUp, Truck, Download, Mail,
-  TrendingUp, CheckCircle2,
+  TrendingUp, CheckCircle2, Clock, XCircle, Phone, User, UserX,
 } from "lucide-react";
 
-type Tab = "products" | "orders" | "stock" | "subscribers" | "users" | "settings" | "blog";
+async function adminFetch(path: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || "";
+  const res = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...(options.headers || {}) },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error del servidor");
+  return data;
+}
 
-const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+type Tab = "products" | "orders" | "abandoned" | "stock" | "subscribers" | "users" | "settings" | "blog";
+
+const Toggle = ({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label?: string }) => (
   <button
     type="button"
+    role="switch"
+    aria-checked={value}
+    aria-label={label}
     onClick={() => onChange(!value)}
     className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${value ? "bg-court-olive" : "bg-gray-200"}`}
   >
@@ -24,7 +39,7 @@ const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 export const AdminDashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [subscribers, setSubscribers] = useState<{ email: string; created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("products");
@@ -85,7 +100,7 @@ export const AdminDashboard: React.FC = () => {
       if (sData) setShippingSettings(sData as ShippingSettings);
       await fetchBlogPosts();
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -103,23 +118,27 @@ export const AdminDashboard: React.FC = () => {
   const savePost = async () => {
     if (!blogForm.title || !blogForm.slug) { toast.error("Título y slug son obligatorios"); return; }
     setSavingPost(true);
-    const { error } = editingPost
-      ? await supabase.from("blog_posts").update(blogForm).eq("id", editingPost.id)
-      : await supabase.from("blog_posts").insert(blogForm);
-    if (error) toast.error("Error: " + error.message);
-    else { toast.success(editingPost ? "Artículo actualizado" : "Artículo creado"); setShowBlogForm(false); fetchBlogPosts(); }
+    try {
+      await adminFetch("/api/admin/blog", { method: "POST", body: JSON.stringify(editingPost ? { id: editingPost.id, ...blogForm } : blogForm) });
+      toast.success(editingPost ? "Artículo actualizado" : "Artículo creado");
+      setShowBlogForm(false); fetchBlogPosts();
+    } catch (err: any) { toast.error("Error: " + err.message); }
     setSavingPost(false);
   };
 
   const deletePost = async (id: string) => {
     if (!confirm("¿Eliminar este artículo?")) return;
-    await supabase.from("blog_posts").delete().eq("id", id);
-    toast.success("Artículo eliminado"); fetchBlogPosts();
+    try {
+      await adminFetch(`/api/admin/blog/${id}`, { method: "DELETE" });
+      toast.success("Artículo eliminado"); fetchBlogPosts();
+    } catch (err: any) { toast.error("Error: " + err.message); }
   };
 
   const togglePublish = async (post: BlogPost) => {
-    await supabase.from("blog_posts").update({ published: !post.published }).eq("id", post.id);
-    fetchBlogPosts();
+    try {
+      await adminFetch(`/api/admin/blog/${post.id}/publish`, { method: "PATCH", body: JSON.stringify({ published: !post.published }) });
+      fetchBlogPosts();
+    } catch (err: any) { toast.error("Error: " + err.message); }
   };
 
   // ── Products ──
@@ -138,16 +157,21 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSizeChange = (size: string, value: number) => {
     const newSizes = { ...formData.sizes, [size]: value };
-    setFormData(f => ({ ...f, sizes: newSizes, stock: Object.values(newSizes).reduce((a, v) => a + (Number(v) || 0), 0) }));
+    setFormData(f => ({ ...f, sizes: newSizes, stock: Object.values(newSizes).reduce((a: number, v) => a + (Number(v) || 0), 0) }));
   };
 
   const uploadImage = async (file: File): Promise<string> => {
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(fileName, file);
-    if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(fileName);
-    return publicUrl;
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const data = await adminFetch("/api/admin/upload", {
+      method: "POST",
+      body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type }),
+    });
+    return data.url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,12 +185,14 @@ export const AdminDashboard: React.FC = () => {
         images: [imageUrl],
         stock: formData.category === "Accesorio"
           ? formData.stock
-          : Object.values(formData.sizes).reduce((a, v) => a + (Number(v) || 0), 0),
+          : Object.values(formData.sizes).reduce((a: number, v) => a + (Number(v) || 0), 0),
       };
-      const { error } = editingProduct
-        ? await supabase.from("products").update(payload).eq("id", editingProduct.id)
-        : await supabase.from("products").insert({ ...payload, created_at: new Date().toISOString() });
-      if (error) throw error;
+      if (editingProduct) {
+        const { error } = await supabase.from("products").update(payload).eq("id", editingProduct.id);
+        if (error) throw error;
+      } else {
+        await adminFetch("/api/admin/products", { method: "POST", body: JSON.stringify({ ...payload, created_at: new Date().toISOString() }) });
+      }
       toast.success(editingProduct ? "Producto actualizado" : "Producto creado");
       closeProductModal();
       fetchAll();
@@ -202,20 +228,21 @@ export const AdminDashboard: React.FC = () => {
 
   // ── Orders ──
   const markShipped = async (orderId: string) => {
-    await supabase.from("orders").update({ status: "shipped" }).eq("id", orderId);
-    setOrders(os => os.map(o => o.id === orderId ? { ...o, status: "shipped" } : o));
-    toast.success("Marcado como enviado");
+    try {
+      await adminFetch(`/api/admin/orders/${orderId}/ship`, { method: "PATCH" });
+      setOrders(os => os.map(o => o.id === orderId ? { ...o, status: "shipped" } : o));
+      toast.success("Marcado como enviado");
+    } catch (err: any) { toast.error("Error: " + err.message); }
   };
 
   const clearAllOrders = async () => {
-    const { error } = await supabase.from("orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    if (error) {
-      toast.error("Error al borrar: " + error.message);
-      console.error("clearAllOrders:", error);
-    } else {
+    try {
+      await adminFetch("/api/admin/orders/clear", { method: "DELETE" });
       toast.success("Ventas borradas");
-      setOrders([]);
+      setOrders(os => os.filter(o => o.status === "pending"));
       setShowClearOrdersModal(false);
+    } catch (err: any) {
+      toast.error("Error al borrar: " + err.message);
     }
   };
 
@@ -229,8 +256,21 @@ export const AdminDashboard: React.FC = () => {
   // ── Shipping ──
   const saveShipping = async () => {
     setSavingSettings(true);
-    const { error } = await supabase.from("shipping_settings").upsert(shippingSettings);
-    if (error) toast.error("Error al guardar"); else toast.success("Configuración guardada");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Sin sesión activa — inicia sesión de nuevo"); setSavingSettings(false); return; }
+      const res = await fetch("/api/admin/shipping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify(shippingSettings),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      toast.success("Configuración guardada");
+    } catch (err: any) {
+      console.error("saveShipping error:", err);
+      toast.error("Error al guardar: " + err.message);
+    }
     setSavingSettings(false);
   };
 
@@ -257,11 +297,53 @@ export const AdminDashboard: React.FC = () => {
     );
   };
 
+  const waLink = (phone: string) =>
+    `https://wa.me/${phone.replace(/\D/g, "").replace(/^0/, "56")}`;
+
+  const ContactInfo = ({ o }: { o: Order }) => {
+    const isGuest = !o.user_id;
+    const phone = o.shipping_address?.phone;
+    const email = o.customer_email;
+    if (isGuest) return (
+      <div className="flex items-center gap-2 pt-1">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest bg-gray-100 text-gray-400 px-2.5 py-1 rounded-full">
+          <UserX size={10} /> Invitado
+        </span>
+        {email && <span className="text-[10px] text-court-ink/40">{email}</span>}
+      </div>
+    );
+    return (
+      <div className="space-y-3">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest bg-court-olive/10 text-court-olive px-2.5 py-1 rounded-full w-fit">
+          <User size={10} /> Usuario registrado
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {email && (
+            <a href={`mailto:${email}`}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-court-ink text-white px-3 py-2 rounded-full hover:bg-court-olive transition-all">
+              <Mail size={11} /> {email}
+            </a>
+          )}
+          {phone && (
+            <a href={waLink(phone)} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-[#25D366] text-white px-3 py-2 rounded-full hover:opacity-90 transition-all">
+              <Phone size={11} /> WhatsApp
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <div className="flex justify-center py-40"><Loader2 className="animate-spin text-court-olive" size={40} /></div>;
 
-  const TABS: { key: Tab; label: string }[] = [
+  const completedOrders = orders.filter(o => o.status === "paid" || o.status === "shipped");
+  const abandonedOrders = orders.filter(o => o.status === "pending");
+
+  const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: "products", label: "Productos" },
-    { key: "orders", label: "Ventas" },
+    { key: "orders", label: "Ventas", count: completedOrders.length },
+    { key: "abandoned", label: "Carritos Abandonados", count: abandonedOrders.length },
     { key: "stock", label: "Inventario" },
     { key: "subscribers", label: "Suscriptores" },
     { key: "users", label: "Usuarios" },
@@ -296,7 +378,7 @@ export const AdminDashboard: React.FC = () => {
         {[
           { label: "Ingresos", value: `$${totalRevenue.toLocaleString("es-CL")}`, icon: TrendingUp, color: "text-court-olive" },
           { label: "Pagados", value: paidCount, icon: CheckCircle2, color: "text-green-600" },
-          { label: "Pendientes", value: pendingCount, icon: ShoppingCart, color: "text-amber-600" },
+          { label: "Abandonados", value: pendingCount, icon: ShoppingCart, color: "text-amber-600" },
           { label: "Productos", value: activeProducts, icon: Package, color: "text-court-ink" },
           { label: "Suscriptores", value: subscribers.length, icon: Mail, color: "text-blue-600" },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -312,10 +394,15 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ── TABS ── */}
       <div className="flex gap-6 mb-10 border-b border-gray-100 overflow-x-auto">
-        {TABS.map(({ key, label }) => (
+        {TABS.map(({ key, label, count }) => (
           <button key={key} onClick={() => setActiveTab(key)}
-            className={`pb-4 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === key ? "text-court-olive border-b-2 border-court-olive" : "text-court-ink/30 hover:text-court-ink"}`}>
+            className={`pb-4 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === key ? "text-court-olive border-b-2 border-court-olive" : "text-court-ink/30 hover:text-court-ink"}`}>
             {label}
+            {count !== undefined && count > 0 && (
+              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${key === "abandoned" ? "bg-amber-100 text-amber-600" : "bg-court-olive/10 text-court-olive"}`}>
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -351,15 +438,15 @@ export const AdminDashboard: React.FC = () => {
                       <span className={`text-sm font-bold ${p.stock <= 3 ? "text-red-500" : "text-court-ink"}`}>{p.stock}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <Toggle value={p.featured ?? false} onChange={() => toggleProductField(p.id, "featured", p.featured ?? false)} />
+                      <Toggle value={p.featured ?? false} onChange={() => toggleProductField(p.id, "featured", p.featured ?? false)} label="Destacado" />
                     </td>
                     <td className="px-6 py-4">
-                      <Toggle value={p.active} onChange={() => toggleProductField(p.id, "active", p.active)} />
+                      <Toggle value={p.active} onChange={() => toggleProductField(p.id, "active", p.active)} label="Activo" />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(p)} className="p-2 text-court-olive hover:text-court-ink transition-colors"><Edit2 size={14} /></button>
-                        <button onClick={() => setDeleteId(p.id)} className="p-2 text-red-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                        <button onClick={() => openEdit(p)} aria-label={`Editar ${p.name}`} className="p-2 text-court-olive hover:text-court-ink transition-colors"><Edit2 size={14} /></button>
+                        <button onClick={() => setDeleteId(p.id)} aria-label={`Eliminar ${p.name}`} className="p-2 text-red-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -376,15 +463,23 @@ export const AdminDashboard: React.FC = () => {
       {/* ══════════════ VENTAS ══════════════ */}
       {activeTab === "orders" && (
         <div className="space-y-3">
-          {orders.map(o => (
+          {completedOrders.map(o => (
             <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {/* Row */}
               <button
                 onClick={() => setExpandedOrder(expandedOrder === o.id ? null : o.id)}
+                aria-expanded={expandedOrder === o.id}
+                aria-label={`${expandedOrder === o.id ? "Ocultar" : "Ver"} detalle de orden`}
                 className="w-full flex items-center gap-6 px-6 py-4 hover:bg-gray-50 transition-colors text-left"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm">{o.shipping_address?.full_name || "Invitado"}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-bold text-sm">{o.shipping_address?.full_name || o.customer_email}</p>
+                    {!o.user_id
+                      ? <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-widest bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0"><UserX size={9} /> Invitado</span>
+                      : <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-widest bg-court-olive/10 text-court-olive px-2 py-0.5 rounded-full flex-shrink-0"><User size={9} /> Usuario</span>
+                    }
+                  </div>
                   <p className="text-[10px] text-court-ink/40">{o.customer_email}</p>
                 </div>
                 <div className="text-right hidden md:block">
@@ -403,7 +498,7 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Productos</p>
                       <div className="space-y-2">
-                        {(o.items || []).map((item: any, i: number) => (
+                        {(o.items || []).map((item: CartItem, i: number) => (
                           <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2">
                             {item.images?.[0] && <img src={item.images[0]} alt="" className="w-8 h-10 rounded-lg object-cover flex-shrink-0" />}
                             <div className="flex-1 min-w-0">
@@ -415,19 +510,25 @@ export const AdminDashboard: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                    {/* Address */}
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Dirección de envío</p>
-                      <div className="bg-white rounded-xl px-4 py-3 text-sm space-y-1">
-                        <p className="font-bold">{o.shipping_address?.full_name}</p>
-                        <p className="text-court-ink/60">{o.shipping_address?.street} {o.shipping_address?.street_number}{o.shipping_address?.apartment ? `, ${o.shipping_address.apartment}` : ""}</p>
-                        <p className="text-court-ink/60">{o.shipping_address?.commune}, {o.shipping_address?.region}</p>
-                        <p className="text-court-ink/40 text-xs">{o.shipping_address?.phone}</p>
-                        {o.shipping_address?.notes && <p className="text-court-ink/40 text-xs italic">"{o.shipping_address.notes}"</p>}
+                    {/* Address + Contacto */}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Dirección de envío</p>
+                        <div className="bg-white rounded-xl px-4 py-3 text-sm space-y-1">
+                          <p className="font-bold">{o.shipping_address?.full_name}</p>
+                          <p className="text-court-ink/60">{o.shipping_address?.street} {o.shipping_address?.street_number}{o.shipping_address?.apartment ? `, ${o.shipping_address.apartment}` : ""}</p>
+                          <p className="text-court-ink/60">{o.shipping_address?.commune}, {o.shipping_address?.region}</p>
+                          <p className="text-court-ink/40 text-xs">{o.shipping_address?.phone}</p>
+                          {o.shipping_address?.notes && <p className="text-court-ink/40 text-xs italic">"{o.shipping_address.notes}"</p>}
+                        </div>
+                        {o.payment_id && (
+                          <p className="text-[9px] text-court-ink/30 mt-2 font-mono">MP: {o.payment_id}</p>
+                        )}
                       </div>
-                      {o.payment_id && (
-                        <p className="text-[9px] text-court-ink/30 mt-2 font-mono">MP: {o.payment_id}</p>
-                      )}
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Contacto</p>
+                        <ContactInfo o={o} />
+                      </div>
                     </div>
                   </div>
                   {/* Actions */}
@@ -444,16 +545,122 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           ))}
-          {orders.length === 0 && (
-            <div className="text-center py-20 text-court-ink/30 font-serif italic">Sin pedidos todavía.</div>
+          {completedOrders.length === 0 && (
+            <div className="text-center py-20 text-court-ink/30 font-serif italic">Sin ventas completadas todavía.</div>
           )}
-          {orders.length > 0 && (
+          {completedOrders.length > 0 && (
             <div className="pt-4 flex justify-end">
               <button onClick={() => setShowClearOrdersModal(true)} className="text-[10px] font-bold uppercase tracking-widest text-red-400 border border-red-200 px-5 py-2.5 rounded-full hover:bg-red-50 transition-all">
                 Borrar todas las ventas
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════ CARRITOS ABANDONADOS ══════════════ */}
+      {activeTab === "abandoned" && (
+        <div className="space-y-3">
+          {abandonedOrders.length === 0 && (
+            <div className="text-center py-20 text-court-ink/30 font-serif italic">Sin carritos abandonados.</div>
+          )}
+          {abandonedOrders.map(o => {
+            const createdAt = o.created_at ? new Date(o.created_at) : null;
+            const hoursAgo = createdAt ? Math.floor((Date.now() - createdAt.getTime()) / 3600000) : null;
+            return (
+              <div key={o.id} className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setExpandedOrder(expandedOrder === o.id ? null : o.id)}
+                  aria-expanded={expandedOrder === o.id}
+                  aria-label={`${expandedOrder === o.id ? "Ocultar" : "Ver"} detalle de carrito abandonado`}
+                  className="w-full flex items-center gap-6 px-6 py-4 hover:bg-amber-50/30 transition-colors text-left"
+                >
+                  <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Clock size={14} className="text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-bold text-sm">{o.shipping_address?.full_name || o.customer_email}</p>
+                      {!o.user_id
+                        ? <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-widest bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full flex-shrink-0"><UserX size={9} /> Invitado</span>
+                        : <span className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-widest bg-court-olive/10 text-court-olive px-2 py-0.5 rounded-full flex-shrink-0"><User size={9} /> Usuario</span>
+                      }
+                    </div>
+                    <p className="text-[10px] text-court-ink/40">{o.customer_email}</p>
+                  </div>
+                  <div className="text-right hidden md:block">
+                    <p className="font-bold text-sm">${o.total.toLocaleString("es-CL")}</p>
+                    {hoursAgo !== null && (
+                      <p className="text-[10px] text-amber-500 font-bold">
+                        {hoursAgo < 1 ? "Hace menos de 1h" : hoursAgo < 24 ? `Hace ${hoursAgo}h` : `Hace ${Math.floor(hoursAgo / 24)}d`}
+                      </p>
+                    )}
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-amber-100 text-amber-600">
+                    Abandonado
+                  </span>
+                  {expandedOrder === o.id ? <ChevronUp size={16} className="text-court-ink/30 flex-shrink-0" /> : <ChevronDown size={16} className="text-court-ink/30 flex-shrink-0" />}
+                </button>
+
+                {expandedOrder === o.id && (
+                  <div className="border-t border-amber-100 px-6 py-6 bg-amber-50/20 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Productos en carrito</p>
+                        <div className="space-y-2">
+                          {(o.items || []).map((item: CartItem, i: number) => (
+                            <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2">
+                              {item.images?.[0] && <img src={item.images[0]} alt="" className="w-8 h-10 rounded-lg object-cover flex-shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold truncate">{item.name}</p>
+                                <p className="text-[9px] text-court-ink/40">Talla {item.selectedSize} · x{item.quantity}</p>
+                              </div>
+                              <p className="text-xs font-bold text-court-olive flex-shrink-0">${(item.price * item.quantity).toLocaleString("es-CL")}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Datos ingresados</p>
+                          <div className="bg-white rounded-xl px-4 py-3 text-sm space-y-1">
+                            <p className="font-bold">{o.shipping_address?.full_name || "—"}</p>
+                            {o.shipping_address?.street && (
+                              <p className="text-court-ink/60">{o.shipping_address.street} {o.shipping_address.street_number}</p>
+                            )}
+                            {o.shipping_address?.commune && (
+                              <p className="text-court-ink/60">{o.shipping_address.commune}, {o.shipping_address.region}</p>
+                            )}
+                            {o.shipping_address?.phone && (
+                              <p className="text-court-ink/40 text-xs">{o.shipping_address.phone}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Contacto</p>
+                          <ContactInfo o={o} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <p className="text-[9px] text-court-ink/30 font-mono truncate">ID: {o.id}</p>
+                      <button
+                        onClick={async () => {
+                          if (!confirm("¿Eliminar este carrito abandonado?")) return;
+                          const { error } = await supabase.from("orders").delete().eq("id", o.id);
+                          if (error) toast.error("Error al eliminar");
+                          else { toast.success("Eliminado"); fetchAll(); }
+                        }}
+                        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-all"
+                      >
+                        <XCircle size={13} /> Eliminar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -707,7 +914,7 @@ export const AdminDashboard: React.FC = () => {
                     <button onClick={() => togglePublish(post)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-court-ink/40 hover:text-court-olive transition-all">
                       {post.published ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
-                    <button onClick={() => { setEditingPost(post); setBlogForm({ ...post }); setShowBlogForm(true); }}
+                    <button onClick={() => { setEditingPost(post); setBlogForm({ ...post, published: post.published ?? false }); setShowBlogForm(true); }}
                       className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-court-ink/40 hover:text-court-olive transition-all">
                       <Edit2 size={14} />
                     </button>

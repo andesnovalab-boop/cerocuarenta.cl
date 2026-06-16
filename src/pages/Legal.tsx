@@ -5,7 +5,7 @@ export const Terms: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-8 py-24 bg-court-cream min-h-screen">
       <SEO title="Términos y Condiciones" />
-      <h1 className="text-5xl font-serif italic mb-12">Términos y Condiciones</h1>
+      <h1 className="text-5xl font-bitter italic mb-12">Términos y Condiciones</h1>
       <div className="prose prose-court-ink max-w-none space-y-8 text-court-ink/70">
         <section>
           <h2 className="text-xl font-bold uppercase tracking-widest text-court-ink mb-4">1. Introducción</h2>
@@ -32,7 +32,7 @@ export const Privacy: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-8 py-24 bg-court-cream min-h-screen">
       <SEO title="Política de Privacidad" />
-      <h1 className="text-5xl font-serif italic mb-12">Política de Privacidad</h1>
+      <h1 className="text-5xl font-bitter italic mb-12">Política de Privacidad</h1>
       <div className="prose prose-court-ink max-w-none space-y-8 text-court-ink/70">
         <p>En CeroCuarenta, nos tomamos muy en serio la privacidad de tus datos. Esta política describe cómo recopilamos y utilizamos tu información personal.</p>
         <section>

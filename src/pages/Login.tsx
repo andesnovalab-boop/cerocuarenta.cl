@@ -98,7 +98,7 @@ export const Login: React.FC = () => {
 
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-black/5 p-10">
           <div className="text-center mb-8">
-            <Link to="/" className="text-3xl font-serif italic text-court-olive">CeroCuarenta</Link>
+            <Link to="/" className="text-3xl font-bitter italic text-court-olive">CeroCuarenta</Link>
             <h1 className="text-2xl font-bold text-court-ink mt-4 mb-1">{titles[mode]}</h1>
             <p className="text-[11px] text-court-ink/40 font-medium uppercase tracking-widest">{subtitles[mode]}</p>
           </div>

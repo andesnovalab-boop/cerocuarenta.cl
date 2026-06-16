@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Pelota -->
+  <circle cx="50" cy="50" r="48" fill="#CCDF38"/>
+  <!-- Línea curva izquierda (costura) -->
+  <path d="M 20 18 Q 5 50 20 82" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <!-- Línea curva derecha (costura) -->
+  <path d="M 80 18 Q 95 50 80 82" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+</svg>

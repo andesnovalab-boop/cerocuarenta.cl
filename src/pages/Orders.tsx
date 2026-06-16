@@ -28,7 +28,7 @@ export const Orders: React.FC = () => {
       if (error) throw error;
       setOrders((data || []) as Order[]);
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      if (import.meta.env.DEV) console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
     }
@@ -57,15 +57,15 @@ export const Orders: React.FC = () => {
   if (loading) return <div className="flex justify-center py-40"><Loader2 className="animate-spin text-court-olive" size={40} /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-24 bg-court-cream">
-      <h1 className="text-7xl font-serif italic tracking-tighter text-court-ink mb-16 leading-none">MIS PEDIDOS</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-24 bg-court-cream">
+      <h1 className="text-4xl sm:text-6xl md:text-7xl font-bitter italic tracking-tighter text-court-ink mb-8 sm:mb-16 leading-none">MIS PEDIDOS</h1>
 
       {orders.length > 0 ? (
         <div className="space-y-12">
           {orders.map((order) => (
             <div key={order.id} className="bg-white border border-court-olive/10 rounded-[3rem] overflow-hidden shadow-2xl shadow-court-olive/5 hover:border-court-olive/30 transition-all">
-              <div className="p-8 bg-court-olive/5 border-b border-court-olive/10 flex flex-wrap justify-between items-center gap-8">
-                <div className="flex items-center gap-12">
+              <div className="p-5 sm:p-8 bg-court-olive/5 border-b border-court-olive/10 flex flex-wrap justify-between items-center gap-4 sm:gap-8">
+                <div className="flex items-center gap-6 sm:gap-12">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-court-ink/40 mb-2">Fecha</p>
                     <p className="text-sm font-bold text-court-ink">
@@ -88,12 +88,18 @@ export const Orders: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="p-5 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
                 <div className="md:col-span-2 space-y-6">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-6">
                       <div className="w-16 h-16 rounded-2xl overflow-hidden bg-court-olive/5">
-                        <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                        {item.images?.[0] ? (
+                          <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-court-olive/20">
+                            <Package size={24} />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-grow">
                         <p className="text-sm font-bold text-court-ink">{item.name}</p>

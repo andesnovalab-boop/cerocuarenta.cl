@@ -7,36 +7,68 @@ interface SEOProps {
   image?: string;
   url?: string;
   type?: string;
+  /** Datos estructurados schema.org. Si se omite, se usa el de tienda por defecto. */
+  jsonLd?: Record<string, any>;
 }
 
-export const SEO: React.FC<SEOProps> = ({ 
-  title = "CeroCuarenta | Tennis Streetwear Santiago", 
+const SITE = "https://cerocuarenta.cl";
+
+// Schema base de la tienda (se usa cuando la página no pasa uno propio)
+const defaultJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Store",
+  name: "CeroCuarenta",
+  description: "Tennis streetwear: estética vintage y streetwear moderno desde Santiago, Chile.",
+  url: SITE,
+  image: `${SITE}/og-image.jpg`,
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Santiago",
+    addressRegion: "Región Metropolitana",
+    addressCountry: "CL",
+  },
+};
+
+export const SEO: React.FC<SEOProps> = ({
+  title = "CeroCuarenta | Tennis Streetwear Santiago",
   description = "Inspirada en el tenis, creada para ti. CeroCuarenta mezcla estética vintage con streetwear moderno en Santiago, Chile.",
-  image = "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1200&auto=format&fit=crop",
-  url = "https://cerocuarenta.cl",
-  type = "website"
+  image = `${SITE}/og-image.jpg`,
+  url = SITE,
+  type = "website",
+  jsonLd,
 }) => {
   const siteTitle = title.includes("CeroCuarenta") ? title : `${title} | CeroCuarenta`;
+  const canonical = url.startsWith("http") ? url : `${SITE}${url}`;
 
   return (
     <Helmet>
       {/* Standard metadata tags */}
       <title>{siteTitle}</title>
       <meta name="description" content={description} />
+      <link rel="canonical" href={canonical} />
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:url" content={url} />
+      <meta property="og:url" content={canonical} />
       <meta property="og:title" content={siteTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:site_name" content="CeroCuarenta" />
+      <meta property="og:locale" content="es_CL" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:url" content={url} />
+      <meta name="twitter:url" content={canonical} />
       <meta name="twitter:title" content={siteTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+
+      {/* Datos estructurados */}
+      <script type="application/ld+json">
+        {JSON.stringify(jsonLd ?? defaultJsonLd)}
+      </script>
     </Helmet>
   );
 };

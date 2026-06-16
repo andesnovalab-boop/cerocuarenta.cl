@@ -44,7 +44,7 @@ function ArticleCard({ post, idx }: { post: BlogPost; idx: number }) {
           />
         </div>
         <CategoryPill cat={post.category} />
-        <h3 className="font-serif italic text-2xl text-court-ink leading-tight mt-3 mb-2 group-hover:text-court-olive transition-colors line-clamp-2">
+        <h3 className="font-bitter italic text-2xl text-court-ink leading-tight mt-3 mb-2 group-hover:text-court-olive transition-colors line-clamp-2">
           {post.title}
         </h3>
         <p className="text-court-ink/40 text-xs leading-relaxed flex-1 line-clamp-2 font-medium">
@@ -85,20 +85,20 @@ export const ElRaquetero: React.FC = () => {
           TÍTULO EDITORIAL
       ══════════════════════════════════════════════════════════ */}
       <section className="border-b border-gray-100 pt-8">
-        <div className="max-w-7xl mx-auto px-8 py-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1
-              className="font-black uppercase text-court-ink leading-[0.85] tracking-[-0.02em]"
-              style={{ fontSize: "clamp(56px, 10vw, 140px)" }}
+              className="text-court-ink leading-[0.85] not-italic"
+              style={{ fontSize: "clamp(56px, 10vw, 140px)", fontFamily: "Filena, serif", fontWeight: 700, fontStyle: "normal" }}
             >
               EL RAQUETERO
             </h1>
-            <p className="text-court-ink/40 font-medium text-sm tracking-[0.25em] uppercase mt-4">
+            <p className="text-court-ink/40 font-medium text-sm tracking-[0.25em] mt-4">
               editorial CeroCuarenta
             </p>
           </div>
           <div className="shrink-0 text-right hidden md:block">
-            <p className="font-serif italic text-[80px] text-court-olive/[0.08] leading-none select-none tracking-tighter">
+            <p className="font-bitter italic text-[80px] text-court-olive/[0.08] leading-none select-none tracking-tighter">
               0–40
             </p>
           </div>
@@ -108,20 +108,22 @@ export const ElRaquetero: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════
           ARTÍCULO DESTACADO FIJO — AGASSI (dos columnas)
       ══════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-8 py-16 border-b border-gray-100">
+      <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-16 border-b border-gray-100">
 
         {/* ── COVER PHOTO SUPERIOR ── */}
         <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden mb-14 shadow-xl shadow-black/10">
           <img
             src="/images/agassi-cover.png"
             alt="Agassi cover"
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-6 left-8 right-8 flex items-end justify-between">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/50 mb-1">Destacado · Tennis · Moda</p>
-              <p className="font-serif italic text-white text-3xl md:text-4xl leading-tight">
+              <p className="font-bitter italic text-white text-3xl md:text-4xl leading-tight">
                 Talento, carisma<br />y estilo
               </p>
             </div>
@@ -136,7 +138,7 @@ export const ElRaquetero: React.FC = () => {
             <CategoryPill cat="Tennis" />
 
             <h2
-              className="font-serif italic text-court-ink leading-[1.05] mt-5 mb-8"
+              className="font-bitter italic text-court-ink leading-[1.05] mt-5 mb-8"
               style={{ fontSize: "clamp(28px, 3.5vw, 46px)" }}
             >
               Talento, carisma y estilo: El tenis lifestyle de Agassi
@@ -144,7 +146,7 @@ export const ElRaquetero: React.FC = () => {
 
             {/* Letra capital decorativa */}
             <div className="text-base text-court-ink/70 leading-relaxed font-medium mb-6">
-              <span className="float-left font-serif italic text-[72px] leading-[0.75] mr-3 mt-1 text-court-olive">
+              <span className="float-left font-bitter italic text-[72px] leading-[0.75] mr-3 mt-1 text-court-olive">
                 E
               </span>
               l estilo de André Agassi en sus años jóvenes rompió por completo con la tradición del tenis clásico. Mientras predominaban los looks blancos y sobrios, él apareció en la cancha con colores neón, estampados llamativos, shorts de mezclilla y chaquetas vibrantes que parecían más propias del pop art que de Wimbledon. Su melena larga, cintillos icónicos y una actitud rebelde terminaron de construir una imagen que desafiaba las normas de un deporte históricamente conservador.
@@ -156,7 +158,7 @@ export const ElRaquetero: React.FC = () => {
 
             {/* Cita destacada */}
             <blockquote className="border-l-2 border-court-olive pl-6 py-1 my-8">
-              <p className="font-serif italic text-xl text-court-ink/60 leading-snug">
+              <p className="font-bitter italic text-xl text-court-ink/60 leading-snug">
                 "Image is everything."
               </p>
               <cite className="text-[10px] font-bold uppercase tracking-widest text-court-ink/30 mt-2 block not-italic">
@@ -183,6 +185,8 @@ export const ElRaquetero: React.FC = () => {
               <img
                 src="/images/agassi-hero.png"
                 alt="Agassi hero"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               {/* Overlay editorial */}
@@ -206,7 +210,7 @@ export const ElRaquetero: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════
           FILTROS + LISTADO DINÁMICO desde Supabase / Blog
       ══════════════════════════════════════════════════════════ */}
-      <div className="max-w-7xl mx-auto px-8 py-5 border-b border-gray-100 overflow-x-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-5 border-b border-gray-100 overflow-x-auto">
         <div className="flex gap-8 min-w-max">
           {["all", ...CATEGORIES].map(cat => (
             <button
@@ -224,10 +228,10 @@ export const ElRaquetero: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-16">
         {filtered.length === 0 ? (
           <div className="text-center py-24 border-2 border-dashed border-court-olive/10 rounded-[2rem]">
-            <p className="font-serif italic text-3xl text-court-ink/30 mb-3">Próximamente.</p>
+            <p className="font-bitter italic text-3xl text-court-ink/30 mb-3">Próximamente.</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-court-ink/20">
               Los primeros artículos están en camino.
             </p>
@@ -235,7 +239,9 @@ export const ElRaquetero: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
             {filtered.map((post, i) => (
-              <ArticleCard key={post.id} post={post} idx={i} />
+              <React.Fragment key={post.id}>
+                <ArticleCard post={post} idx={i} />
+              </React.Fragment>
             ))}
           </div>
         )}

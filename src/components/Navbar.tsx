@@ -34,7 +34,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-5 md:py-6">
-      <div className="max-w-[1800px] mx-auto grid grid-cols-3 items-center">
+      <div className="max-w-[1800px] mx-auto grid grid-cols-[1fr_auto_1fr] items-center">
 
         {/* Left: Navigation Links */}
         <div className="hidden md:flex items-center gap-8">
@@ -47,14 +47,19 @@ export const Navbar: React.FC = () => {
           <Link to="/club" className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
             El Club
           </Link>
-          <Link to="/raquetero" className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
+          <Link to="/raquetero" className="text-[11px] font-bold uppercase tracking-[3px] text-white bg-court-ink px-4 py-2 rounded-full hover:bg-court-olive transition-colors">
             El Raquetero
           </Link>
         </div>
 
         {/* Mobile: Hamburger */}
         <div className="md:hidden flex items-center">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-court-ink p-1">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={isMenuOpen}
+            className="text-court-ink p-1"
+          >
             {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -77,11 +82,11 @@ export const Navbar: React.FC = () => {
             className="text-court-ink hover:text-court-olive transition-colors p-1"
             aria-label="Buscar"
           >
-            <Search size={20} strokeWidth={1.5} />
+            <Search size={18} strokeWidth={1.5} />
           </button>
 
           {/* Cart */}
-          <Link to="/cart" className="relative text-court-ink hover:text-court-olive transition-colors p-1" aria-label="Carrito">
+          <Link to="/cart" className="relative text-court-ink hover:text-court-olive transition-colors p-2" aria-label="Carrito">
             <ShoppingCart size={20} strokeWidth={1.5} />
             {cartCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-court-olive text-white text-[9px] font-black min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white px-1">
@@ -95,7 +100,7 @@ export const Navbar: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="text-court-ink hover:text-court-olive transition-colors p-1"
+                className="text-court-ink hover:text-court-olive transition-colors p-2"
                 aria-label="Mi cuenta"
               >
                 <User size={20} strokeWidth={1.5} />
@@ -184,6 +189,7 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
+                aria-label="Cerrar búsqueda"
                 className="absolute right-5 top-1/2 -translate-y-1/2 text-court-ink/30 hover:text-court-ink transition-colors"
               >
                 <X size={16} />
