@@ -1,0 +1,31 @@
+name: keep-alive
+
+# Mantiene "despiertos" Render y Supabase (evita el sleep/pausa por inactividad).
+# - Render free duerme a los 15 min → ping cada 10 min.
+# - Supabase free pausa a los 7 días → el mismo ping diario lo mantiene activo.
+#
+# Requiere configurar en el repo (Settings → Secrets and variables → Actions):
+#   - RENDER_URL   = https://cerocuarenta.cl   (o la URL .onrender.com)
+#   - SUPABASE_URL = https://xxxx.supabase.co
+#   - SUPABASE_ANON_KEY = <anon key>
+#
+# Nota: el cron de GitHub Actions puede retrasarse algunos minutos. Para máxima
+# fiabilidad en Render, usa además UptimeRobot (ver GUIA-DEPLOY-RENDER.md).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # cada 10 minutos
+  workflow_dispatch:           # permite ejecutarlo a mano
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render (/api/health)
+        run: |
+          curl -sS -m 30 "${{ secrets.RENDER_URL }}/api/health" || echo "Render no respondió"
+
+      - name: Ping Supabase (REST)
+        run: |
+          curl -sS -m 30 "${{ secrets.SUPABASE_URL }}/rest/v1/products?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" || echo "Supabase no respondió"

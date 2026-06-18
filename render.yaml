@@ -1,0 +1,45 @@
+# Render Blueprint — CeroCuarenta
+# Despliega el server Express (server.ts) que sirve el frontend + la API + el fallback SPA.
+# Los secretos (sync:false) se cargan en el dashboard de Render, NO en el repo.
+services:
+  - type: web
+    name: cerocuarenta
+    runtime: node
+    plan: free                       # subir a "starter" (~US$7/mes) para que no se duerma
+    region: oregon
+    branch: main
+    # --include=dev: necesario porque vite/tsx están en devDependencies
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # ── Secretos: se cargan manualmente en el dashboard de Render ──
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: VITE_MP_PUBLIC_KEY
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: MP_CLIENT_ID
+        sync: false
+      - key: MP_CLIENT_SECRET
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      - key: VITE_ADMIN_EMAIL
+        sync: false
