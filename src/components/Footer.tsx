@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
               Somos una marca chilena Inspirada en el tenis, creada para ti.
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-white/20 hover:text-court-olive transition-all"><Instagram size={20} /></a>
+              <a href="https://www.instagram.com/cerocuarenta.cl/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-white/20 hover:text-court-olive transition-all"><Instagram size={20} /></a>
             </div>
           </div>
 
@@ -49,8 +49,10 @@ export const Footer: React.FC = () => {
               <li className="flex items-center gap-4 text-white/40 text-xs font-bold uppercase tracking-widest">
                 <Mail size={16} className="text-court-olive" /> contacto@cerocuarenta.cl
               </li>
-              <li className="flex items-center gap-4 text-white/40 text-xs font-bold uppercase tracking-widest">
-                <Phone size={16} className="text-court-olive" /> +56 9 1234 5678
+              <li className="text-white/40 text-xs font-bold uppercase tracking-widest">
+                <a href="https://wa.me/56950081657" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 hover:text-white transition-all">
+                  <Phone size={16} className="text-court-olive" /> +56 9 5008 1657
+                </a>
               </li>
               <li className="flex items-center gap-4 text-white/40 text-xs font-bold uppercase tracking-widest">
                 <MapPin size={16} className="text-court-olive" /> Santiago, Chile
