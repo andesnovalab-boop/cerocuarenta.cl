@@ -1,25 +1,33 @@
-# CeroCuarenta — Estado
+# CeroCuarenta — Pendientes
 
-> ✅ **Completamente desarrollada y configurada.** `.env` 10/10. Lista para producción. — 2026-06-17
+> Estado: ✅ Desplegado en Render y funcionando (frontend + API + SPA + emails + pagos).
+> URL actual: https://cerocuarenta.onrender.com — Última actualización: 2026-06-18
 
-## Para desplegar
-```bash
-npm install
-npm run build      # genera dist/
-npm run start      # NODE_ENV=production tsx server.ts
-```
-Desarrollo local: `npm run dev`.
+## ✅ Ya hecho
+- Deploy en Render (Blueprint). `/club`, `/admin`, `/api/health` responden 200.
+- Pagos MercadoPago (producción), webhook validado, emails con Resend (dominio verificado).
+- SEO, footer con datos reales, logo en emails (Supabase storage).
+- Supabase activo.
 
-## ⚠️ Única pendiente: rotar secretos que pasaron por el chat
-Cuando confirmes que todo funciona en producción, regenera y reemplaza en `.env`:
-- **MercadoPago** → Access Token y Client Secret (Tus integraciones → Credenciales de producción → Renovar).
-- **Resend** → API key (resend.com → API Keys → recrear).
-- (El Public Key y Client ID son públicos; no requieren rotación.)
+## 🔴 Pendientes ANTES de vender en serio
+1. **Precios reales** — los 4 productos están a **$1** (test). Corregir en `/admin`.
+2. **Envío real** — hoy RM/Regiones en **$0**, umbral envío gratis en **$1**. Corregir en `/admin`.
+3. **APP_URL en Render** — debe ser `https://cerocuarenta.onrender.com` (o el dominio final).
+4. **Webhook MercadoPago** — apuntar a `…/api/webhooks/mp` de la URL real (onrender o dominio).
 
-## Hecho (sesión 16–17 jun 2026)
-- Pago idempotente (stock + email exactamente una vez).
-- Envío recalculado server-side (anti-manipulación).
-- Emails de confirmación con Resend (estado real sent/failed/skipped).
-- SEO: robots.txt, sitemap.xml, og-image.jpg, canonical, JSON-LD.
-- Hardening: MIME en upload admin, Authorization en CORS.
-- Credenciales MP producción + webhook secret + Resend key en `.env` (10/10).
+## 🟡 Para dejarlo redondo
+5. **Dominio propio** — conectar `cerocuarenta.cl` a Render (Custom Domain + DNS en Hostinger).
+   Luego cambiar `APP_URL` y el webhook a `https://cerocuarenta.cl`.
+6. **Keep-alive (UptimeRobot)** — monitor a `/api/health` cada 5 min (evita cold starts del free tier).
+   También está el workflow `.github/workflows/keep-alive.yml` (configurar secrets en GitHub).
+7. **"Responder a" del email** — definir a qué correo real llegan las respuestas de clientes
+   (andesnovalab@gmail.com / juanplazabravo@gmail.com / contacto@cerocuarenta.cl) → se agrega `reply_to` en sendOrderEmail.
+8. **Plan Render** — al confirmar ventas, subir Free → Starter (~US$7/mes) para always-on.
+
+## ⚠️ Seguridad
+9. **Rotar secretos** que pasaron por el chat: Access Token y Client Secret (MercadoPago),
+   API key (Resend), service-role key (Supabase). Regenerar y actualizar en `.env` y Render.
+
+## Guías de referencia
+- `GUIA-DEPLOY-RENDER.md` — deploy y dominio.
+- `GUIA-DNS-RESEND-HOSTINGER.md` — verificación de dominio en Resend (ya hecho).
