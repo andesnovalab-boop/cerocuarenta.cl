@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle, Clock, Package, ShoppingBag, Loader2, XCircle } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../supabase";
 
 type PaymentStatus = "loading" | "approved" | "pending" | "error";
 
@@ -27,10 +28,11 @@ export const Success: React.FC = () => {
       }
 
       try {
-        const res = await fetch(`/api/checkout/verify-payment?payment_id=${paymentId}`);
-        const data = await res.json();
+        const { data } = await supabase.functions.invoke("verify-payment", {
+          body: { payment_id: paymentId },
+        });
 
-        if (data.status === "paid") {
+        if (data?.status === "paid") {
           setStatus("approved");
           setVerifiedOrderId(data.orderId || rawOrderId);
           clearCart();

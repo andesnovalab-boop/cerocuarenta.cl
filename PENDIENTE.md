@@ -8,6 +8,7 @@
 - Pagos MercadoPago (producción), webhook validado, emails con Resend (dominio verificado).
 - SEO, footer con datos reales, logo en emails (Supabase storage).
 - Supabase activo.
+- `reply_to` en `sendOrderEmail` → default `contacto@cerocuarenta.cl` (override con `RESEND_REPLY_TO` en `.env`/Render). `npm run lint` OK.
 
 ## 🔴 Pendientes ANTES de vender en serio
 1. **Precios reales** — los 4 productos están a **$1** (test). Corregir en `/admin`.
@@ -20,8 +21,7 @@
    Luego cambiar `APP_URL` y el webhook a `https://cerocuarenta.cl`.
 6. **Keep-alive (UptimeRobot)** — monitor a `/api/health` cada 5 min (evita cold starts del free tier).
    También está el workflow `.github/workflows/keep-alive.yml` (configurar secrets en GitHub).
-7. **"Responder a" del email** — definir a qué correo real llegan las respuestas de clientes
-   (andesnovalab@gmail.com / juanplazabravo@gmail.com / contacto@cerocuarenta.cl) → se agrega `reply_to` en sendOrderEmail.
+7. ✅ **"Responder a" del email** — hecho. `reply_to` = `contacto@cerocuarenta.cl` (default en código).
 8. **Plan Render** — al confirmar ventas, subir Free → Starter (~US$7/mes) para always-on.
 
 ## ⚠️ Seguridad

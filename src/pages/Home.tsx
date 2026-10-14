@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../supabase";
 import { Product } from "../types";
 import { ProductCard } from "../components/ProductCard";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Truck, Shield } from "lucide-react";
 import { SEO } from "../components/SEO";
 
@@ -14,6 +14,7 @@ const CLUB_IMG = "/images/sesion1-031.jpg";
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +25,22 @@ export const Home: React.FC = () => {
         setLoading(false);
       });
   }, []);
+
+  // Filtro por colección (desde el menú del header: /?col=pressure | /?col=wtf)
+  const col = searchParams.get("col");
+  const COLLECTIONS: Record<string, { label: string; match: RegExp }> = {
+    pressure: { label: "Pressure Is a Privilege", match: /pressure/i },
+    wtf: { label: "Game, Set and WTF!", match: /game|wtf/i },
+  };
+  const activeCol = col ? COLLECTIONS[col] : null;
+  const shownProducts = activeCol ? products.filter(p => activeCol.match.test(p.name)) : products;
+
+  // Al elegir colección, desplazar a la sección
+  useEffect(() => {
+    if (col && !loading) {
+      document.getElementById("coleccion")?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [col, loading]);
 
 
   return (
@@ -97,9 +114,14 @@ export const Home: React.FC = () => {
       <section id="coleccion" className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-16">
         <div className="flex items-end justify-between mb-12">
           <div>
-            <span className="text-[13px] font-bold uppercase tracking-[0.4em] text-court-olive block mb-3">Drop 01</span>
-            <h2 className="text-[28px] md:text-[44px] font-bitter italic text-court-ink">Colección</h2>
+            <span className="text-[13px] font-bold uppercase tracking-[0.4em] text-court-olive block mb-3">{activeCol ? "Colección" : "Drop 01"}</span>
+            <h2 className="text-[28px] md:text-[44px] font-bitter italic text-court-ink">{activeCol ? activeCol.label : "Colección"}</h2>
           </div>
+          {activeCol && (
+            <Link to="/" className="text-[11px] font-bold uppercase tracking-widest text-court-ink/40 hover:text-court-olive transition-colors whitespace-nowrap">
+              Ver toda la colección
+            </Link>
+          )}
         </div>
 
         {loading ? (
@@ -113,9 +135,9 @@ export const Home: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : products.length > 0 ? (
+        ) : shownProducts.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-2 gap-6 md:gap-10">
-            {products.map((product) => (
+            {shownProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

@@ -67,6 +67,8 @@ function validateMPSignature(req: express.Request): boolean {
 async function sendOrderEmail(order: any): Promise<"sent" | "failed" | "skipped"> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM || "CeroCuarenta <onboarding@resend.dev>";
+  // A dónde llegan las respuestas del cliente. Configurable en .env / Render.
+  const replyTo = process.env.RESEND_REPLY_TO || "contacto@cerocuarenta.cl";
   if (!apiKey || !order?.customer_email) return "skipped";
 
   const clp = (n: number) => `$${Number(n || 0).toLocaleString("es-CL")}`;
@@ -136,6 +138,7 @@ async function sendOrderEmail(order: any): Promise<"sent" | "failed" | "skipped"
       body: JSON.stringify({
         from,
         to: order.customer_email,
+        reply_to: replyTo,
         subject: `Confirmación de tu pedido #${order.id} — CeroCuarenta`,
         html,
       }),

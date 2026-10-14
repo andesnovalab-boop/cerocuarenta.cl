@@ -9,18 +9,6 @@ import {
   TrendingUp, CheckCircle2, Clock, XCircle, Phone, User, UserX,
 } from "lucide-react";
 
-async function adminFetch(path: string, options: RequestInit = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || "";
-  const res = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...(options.headers || {}) },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Error del servidor");
-  return data;
-}
-
 type Tab = "products" | "orders" | "abandoned" | "stock" | "subscribers" | "users" | "settings" | "blog";
 
 const Toggle = ({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label?: string }) => (
@@ -119,7 +107,10 @@ export const AdminDashboard: React.FC = () => {
     if (!blogForm.title || !blogForm.slug) { toast.error("Título y slug son obligatorios"); return; }
     setSavingPost(true);
     try {
-      await adminFetch("/api/admin/blog", { method: "POST", body: JSON.stringify(editingPost ? { id: editingPost.id, ...blogForm } : blogForm) });
+      const { error } = editingPost
+        ? await supabase.from("blog_posts").update(blogForm).eq("id", editingPost.id)
+        : await supabase.from("blog_posts").insert(blogForm);
+      if (error) throw error;
       toast.success(editingPost ? "Artículo actualizado" : "Artículo creado");
       setShowBlogForm(false); fetchBlogPosts();
     } catch (err: any) { toast.error("Error: " + err.message); }
@@ -129,14 +120,16 @@ export const AdminDashboard: React.FC = () => {
   const deletePost = async (id: string) => {
     if (!confirm("¿Eliminar este artículo?")) return;
     try {
-      await adminFetch(`/api/admin/blog/${id}`, { method: "DELETE" });
+      const { error } = await supabase.from("blog_posts").delete().eq("id", id);
+      if (error) throw error;
       toast.success("Artículo eliminado"); fetchBlogPosts();
     } catch (err: any) { toast.error("Error: " + err.message); }
   };
 
   const togglePublish = async (post: BlogPost) => {
     try {
-      await adminFetch(`/api/admin/blog/${post.id}/publish`, { method: "PATCH", body: JSON.stringify({ published: !post.published }) });
+      const { error } = await supabase.from("blog_posts").update({ published: !post.published }).eq("id", post.id);
+      if (error) throw error;
       fetchBlogPosts();
     } catch (err: any) { toast.error("Error: " + err.message); }
   };
@@ -161,28 +154,30 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const uploadImage = async (file: File): Promise<string> => {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(",")[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    const data = await adminFetch("/api/admin/upload", {
-      method: "POST",
-      body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type }),
-    });
-    return data.url;
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(uniqueName, file, { contentType: file.type || "image/jpeg" });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(uniqueName);
+    return publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
     try {
-      let imageUrl = formData.images[0];
-      if (selectedFile) imageUrl = await uploadImage(selectedFile);
+      // Preservar TODAS las imágenes existentes (frente, dorso, etc.).
+      // Solo reemplazar la primera (frente) si se subió un archivo nuevo.
+      let images = [...(formData.images || [])];
+      if (selectedFile) {
+        const url = await uploadImage(selectedFile);
+        if (images.length) images[0] = url; else images = [url];
+      }
+      images = images.filter(Boolean);
       const payload = {
         ...formData,
-        images: [imageUrl],
+        images,
         stock: formData.category === "Accesorio"
           ? formData.stock
           : Object.values(formData.sizes).reduce((a: number, v) => a + (Number(v) || 0), 0),
@@ -191,7 +186,8 @@ export const AdminDashboard: React.FC = () => {
         const { error } = await supabase.from("products").update(payload).eq("id", editingProduct.id);
         if (error) throw error;
       } else {
-        await adminFetch("/api/admin/products", { method: "POST", body: JSON.stringify({ ...payload, created_at: new Date().toISOString() }) });
+        const { error } = await supabase.from("products").insert({ ...payload, created_at: new Date().toISOString() });
+        if (error) throw error;
       }
       toast.success(editingProduct ? "Producto actualizado" : "Producto creado");
       closeProductModal();
@@ -229,7 +225,8 @@ export const AdminDashboard: React.FC = () => {
   // ── Orders ──
   const markShipped = async (orderId: string) => {
     try {
-      await adminFetch(`/api/admin/orders/${orderId}/ship`, { method: "PATCH" });
+      const { error } = await supabase.from("orders").update({ status: "shipped" }).eq("id", orderId);
+      if (error) throw error;
       setOrders(os => os.map(o => o.id === orderId ? { ...o, status: "shipped" } : o));
       toast.success("Marcado como enviado");
     } catch (err: any) { toast.error("Error: " + err.message); }
@@ -237,7 +234,8 @@ export const AdminDashboard: React.FC = () => {
 
   const clearAllOrders = async () => {
     try {
-      await adminFetch("/api/admin/orders/clear", { method: "DELETE" });
+      const { error } = await supabase.from("orders").delete().in("status", ["paid", "shipped"]);
+      if (error) throw error;
       toast.success("Ventas borradas");
       setOrders(os => os.filter(o => o.status === "pending"));
       setShowClearOrdersModal(false);
@@ -257,15 +255,9 @@ export const AdminDashboard: React.FC = () => {
   const saveShipping = async () => {
     setSavingSettings(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error("Sin sesión activa — inicia sesión de nuevo"); setSavingSettings(false); return; }
-      const res = await fetch("/api/admin/shipping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify(shippingSettings),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const { error } = await supabase.from("shipping_settings")
+        .upsert({ ...shippingSettings, updated_at: new Date().toISOString() });
+      if (error) throw error;
       toast.success("Configuración guardada");
     } catch (err: any) {
       console.error("saveShipping error:", err);
@@ -352,13 +344,13 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
 
       {/* ── HEADER ── */}
-      <div className="flex justify-between items-end mb-12">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 sm:mb-12">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-court-olive mb-2">Panel</p>
-          <h1 className="text-6xl font-serif italic tracking-tighter leading-none">Admin</h1>
+          <h1 className="text-4xl sm:text-6xl font-serif italic tracking-tighter leading-none">Admin</h1>
         </div>
         {activeTab === "products" && (
           <button onClick={() => setShowModal(true)} className="bg-court-ink text-white px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-court-olive transition-all flex items-center gap-2">
@@ -409,7 +401,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ══════════════ PRODUCTOS ══════════════ */}
       {activeTab === "products" && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
@@ -666,7 +658,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ══════════════ INVENTARIO ══════════════ */}
       {activeTab === "stock" && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-gray-50">
               <tr>
@@ -713,7 +705,7 @@ export const AdminDashboard: React.FC = () => {
               <Download size={12} /> Exportar CSV
             </button>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto shadow-sm">
             <table className="w-full text-left">
               <thead className="bg-gray-50">
                 <tr>
@@ -739,7 +731,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ══════════════ USUARIOS ══════════════ */}
       {activeTab === "users" && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-gray-50">
               <tr>
@@ -778,13 +770,13 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ══════════════ CONFIGURACIÓN ══════════════ */}
       {activeTab === "settings" && (
-        <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 p-10 shadow-sm">
+        <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 p-6 sm:p-10 shadow-sm">
           <div className="flex items-center gap-3 mb-10">
             <Settings size={20} className="text-court-olive" />
             <h2 className="text-xl font-serif italic">Configuración de Envío</h2>
           </div>
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[
                 { label: "Precio RM (Santiago)", key: "rm" as const },
                 { label: "Precio Regiones", key: "region" as const },
@@ -897,7 +889,7 @@ export const AdminDashboard: React.FC = () => {
               <p className="font-serif italic text-xl text-court-ink/30">Sin artículos todavía.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto shadow-sm">
               {blogPosts.map((post, i) => (
                 <div key={post.id} className={`flex items-center gap-5 px-6 py-4 ${i !== blogPosts.length - 1 ? "border-b border-gray-100" : ""}`}>
                   {post.cover_image && (
@@ -1012,7 +1004,7 @@ export const AdminDashboard: React.FC = () => {
                 {formData.category !== "Accesorio" && Object.keys(formData.sizes).length > 0 && (
                   <div className="md:col-span-2">
                     <label className="block text-[9px] font-bold uppercase tracking-widest text-court-ink/40 mb-3">Stock por Talla</label>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {Object.entries(formData.sizes).map(([size, stock]) => (
                         <div key={size}>
                           <label className="block text-[8px] font-bold uppercase tracking-widest text-court-ink/30 mb-1">{size}</label>
@@ -1042,7 +1034,7 @@ export const AdminDashboard: React.FC = () => {
                       {Object.keys(formData.sizes).map(size => (
                         <div key={size} className="bg-gray-50 rounded-xl p-4">
                           <p className="text-[9px] font-bold uppercase tracking-widest text-court-olive mb-3">Talla {size}</p>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {Object.keys(formData.measurements[size] || {}).map(key => (
                               <div key={key}>
                                 <label className="block text-[8px] font-bold uppercase tracking-widest text-court-ink/30 mb-1">{key}</label>

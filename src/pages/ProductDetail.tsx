@@ -127,7 +127,7 @@ export const ProductDetail: React.FC = () => {
           {/* ── Imagen ─────────────────────────────────────────── */}
           <div className="w-full lg:w-1/2 flex flex-col">
             <div
-              className="relative aspect-square overflow-hidden rounded-2xl bg-white border border-gray-100 cursor-pointer"
+              className="relative aspect-square overflow-hidden rounded-2xl bg-gray-100 border border-gray-200 cursor-pointer"
               onClick={() => setShowBack(b => !b)}
             >
               <img

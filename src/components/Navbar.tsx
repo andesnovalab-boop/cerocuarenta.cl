@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, Search, Menu, X, Package, LogOut, LayoutDashboard } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ShoppingCart, User, Search, Menu, X, Package, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -8,6 +8,14 @@ import { motion, AnimatePresence } from "motion/react";
 export const Navbar: React.FC = () => {
   const { cart } = useCart();
   const { session, isAdmin, signOut } = useAuth();
+  const location = useLocation();
+  // Si haces clic en el enlace de la página en la que YA estás, sube al inicio.
+  const sameTop = (to: string) => (e: React.MouseEvent) => {
+    if (location.pathname + location.search === to) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -38,16 +46,30 @@ export const Navbar: React.FC = () => {
 
         {/* Left: Navigation Links */}
         <div className="hidden md:flex items-center gap-8">
-          <Link to="/" className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
-            Colección
-          </Link>
-          <Link to="/galeria" className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
+          <div className="relative group">
+            <Link to="/" onClick={sameTop("/")} className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
+              Colección
+              <ChevronDown size={13} className="transition-transform group-hover:rotate-180" />
+            </Link>
+            {/* Dropdown al pasar el mouse (el pt-3 cierra el hueco para que no se cierre) */}
+            <div className="absolute left-0 top-full pt-4 opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50">
+              <div className="bg-white border border-gray-100 rounded-2xl shadow-xl py-2 min-w-[260px] overflow-hidden">
+                <Link to="/?col=pressure" className="block px-5 py-3 text-[11px] font-bold uppercase tracking-[2px] text-court-ink hover:bg-gray-50 hover:text-court-olive transition-colors">
+                  Pressure Is a Privilege
+                </Link>
+                <Link to="/?col=wtf" className="block px-5 py-3 text-[11px] font-bold uppercase tracking-[2px] text-court-ink hover:bg-gray-50 hover:text-court-olive transition-colors">
+                  Game, Set and WTF!
+                </Link>
+              </div>
+            </div>
+          </div>
+          <Link to="/galeria" onClick={sameTop("/galeria")} className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
             Galería
           </Link>
-          <Link to="/club" className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
+          <Link to="/club" onClick={sameTop("/club")} className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink hover:text-court-olive transition-colors">
             El Club
           </Link>
-          <Link to="/raquetero" className="text-[11px] font-bold uppercase tracking-[3px] text-white bg-court-ink px-4 py-2 rounded-full hover:bg-court-olive transition-colors">
+          <Link to="/raquetero" onClick={sameTop("/raquetero")} className="text-[11px] font-bold uppercase tracking-[3px] text-white bg-court-ink px-4 py-2 rounded-full hover:bg-court-olive transition-colors">
             El Raquetero
           </Link>
         </div>
@@ -200,6 +222,13 @@ export const Navbar: React.FC = () => {
       </AnimatePresence>
 
       {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 top-[60px] z-40"
+          onClick={() => setIsMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
@@ -209,10 +238,12 @@ export const Navbar: React.FC = () => {
             className="md:hidden bg-white border-t border-gray-100 overflow-hidden absolute left-0 right-0 top-full z-50 shadow-xl"
           >
             <div className="flex flex-col px-8 py-10 gap-6">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">Colección</Link>
-              <Link to="/galeria" onClick={() => setIsMenuOpen(false)} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">Galería</Link>
-              <Link to="/club" onClick={() => setIsMenuOpen(false)} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">El Club</Link>
-              <Link to="/raquetero" onClick={() => setIsMenuOpen(false)} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">El Raquetero</Link>
+              <Link to="/" onClick={(e) => { setIsMenuOpen(false); sameTop("/")(e); }} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">Colección</Link>
+              <Link to="/?col=pressure" onClick={() => setIsMenuOpen(false)} className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink/55 pl-4">Pressure Is a Privilege</Link>
+              <Link to="/?col=wtf" onClick={() => setIsMenuOpen(false)} className="text-[11px] font-bold uppercase tracking-[3px] text-court-ink/55 pl-4">Game, Set and WTF!</Link>
+              <Link to="/galeria" onClick={(e) => { setIsMenuOpen(false); sameTop("/galeria")(e); }} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">Galería</Link>
+              <Link to="/club" onClick={(e) => { setIsMenuOpen(false); sameTop("/club")(e); }} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">El Club</Link>
+              <Link to="/raquetero" onClick={(e) => { setIsMenuOpen(false); sameTop("/raquetero")(e); }} className="text-[13px] font-bold uppercase tracking-[4px] text-court-ink">El Raquetero</Link>
 
               <div className="h-px bg-gray-100 w-full my-2" />
 

@@ -255,41 +255,26 @@ export const Checkout: React.FC = () => {
           .then(() => {});
       }
 
-      // Crear orden en el servidor (service role bypasea RLS)
-      const orderRes = await fetch("/api/checkout/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // La Edge Function crea la orden (service-role), recalcula precios/envío/stock
+      // desde la BD y devuelve la URL de pago. No se confía en totales del cliente.
+      const { data: mpData, error: mpErr } = await supabase.functions.invoke("checkout-mp", {
+        body: {
+          items: cart,
           customerEmail,
           userId: user?.id || null,
-          items: cart,
-          subtotal: total,
-          shippingCost: shippingMethod.price,
-          total: total + shippingMethod.price,
+          shippingMethod: shippingMethod.name,
           shippingAddress: {
             ...shipping,
             address: [shipping.street, shipping.street_number, shipping.apartment].filter(Boolean).join(", "),
           },
-          shippingMethod: shippingMethod.name,
-        }),
+        },
       });
+      if (mpErr) throw new Error("Error al iniciar el pago");
 
-      const orderData = await orderRes.json();
-      if (!orderRes.ok || !orderData.orderId) throw new Error(orderData.error || "No se pudo crear la orden");
-
-      // Crear preferencia MercadoPago
-      const mpRes = await fetch("/api/checkout/mp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: orderData.orderId, customerEmail }),
-      });
-
-      const mpData = await mpRes.json();
-
-      if (mpData.url) {
+      if (mpData?.url) {
         window.location.href = mpData.url;
       } else {
-        toast.error(mpData.error || "Error al iniciar el pago");
+        toast.error(mpData?.error || "Error al iniciar el pago");
         setLoading(false);
       }
 
