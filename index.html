@@ -5,13 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/pelota-de-tenis.png" />
     <link rel="apple-touch-icon" href="/pelota-de-tenis.png" />
+    <!--
+      Título, descripción, canonical y Open Graph de la portada.
+      scripts/prerender-seo.mjs los reemplaza en cada página al compilar (textos en src/seo-paginas.json)
+      y src/main.tsx quita los data-prerender al cargar, para que React Helmet no los duplique.
+    -->
     <title>CeroCuarenta - Ropa de tenis</title>
-    <meta name="description" content="Inspirada en el tenis, creada para ti. Envíos a todo Chile" />
+    <meta data-prerender name="description" content="Inspirada en el tenis, creada para ti. Envíos a todo Chile" />
+    <link data-prerender rel="canonical" href="https://cerocuarenta.cl/" />
+    <meta data-prerender property="og:type" content="website" />
+    <meta data-prerender property="og:url" content="https://cerocuarenta.cl/" />
+    <meta data-prerender property="og:title" content="CeroCuarenta - Ropa de tenis" />
+    <meta data-prerender property="og:description" content="Inspirada en el tenis, creada para ti. Envíos a todo Chile" />
+    <meta data-prerender property="og:image" content="https://cerocuarenta.cl/og-image.jpg" />
+    <meta data-prerender property="og:site_name" content="CeroCuarenta" />
+    <meta data-prerender property="og:locale" content="es_CL" />
+    <meta data-prerender name="twitter:card" content="summary_large_image" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="author" content="CeroCuarenta" />
     <meta name="geo.region" content="CL-RM" />
     <meta name="geo.placename" content="Santiago, Chile" />
-    <link rel="canonical" href="https://cerocuarenta.cl/" />
     <meta name="theme-color" content="#0a0a0a" />
   </head>
   <body>

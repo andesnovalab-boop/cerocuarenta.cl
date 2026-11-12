@@ -4,10 +4,7 @@ import { SEO } from "../components/SEO";
 export const Club: React.FC = () => {
   return (
     <div className="bg-white min-h-screen">
-      <SEO
-        title="El Club"
-        description="CeroCuarenta no es solo una marca; es una forma de entender el juego, dentro y fuera de la cancha."
-      />
+      <SEO />
 
       {/* ── TÍTULO ─────────────────────────────────────────────── */}
       <header className="max-w-6xl mx-auto px-4 sm:px-8 pt-14 sm:pt-20 pb-10 sm:pb-16">

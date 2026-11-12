@@ -26,7 +26,7 @@ export const Lookbook: React.FC = () => {
 
   return (
     <div className="bg-white min-h-screen">
-      <SEO title="Galería" description="Galería editorial Drop 01 — CeroCuarenta Santiago" />
+      <SEO />
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-14 sm:pt-20 pb-12">

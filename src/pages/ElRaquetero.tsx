@@ -6,7 +6,7 @@ import { SEO } from "../components/SEO";
 export const ElRaquetero: React.FC = () => {
   return (
     <div className="bg-white min-h-screen">
-      <SEO title="El Raquetero — CeroCuarenta" description="Cultura, tennis y moda desde la cancha. Muy pronto." />
+      <SEO />
 
       {/* ── TÍTULO EDITORIAL ── */}
       <section className="border-b border-gray-100 pt-8">

@@ -1,0 +1,26 @@
+{
+  "/": {
+    "title": "CeroCuarenta - Ropa de tenis",
+    "description": "Inspirada en el tenis, creada para ti. Envíos a todo Chile"
+  },
+  "/galeria": {
+    "title": "Galería | CeroCuarenta",
+    "description": "Galería editorial Drop 01 — CeroCuarenta Santiago"
+  },
+  "/raquetero": {
+    "title": "El Raquetero — CeroCuarenta",
+    "description": "Cultura, tennis y moda desde la cancha. Muy pronto."
+  },
+  "/club": {
+    "title": "El Club | CeroCuarenta",
+    "description": "CeroCuarenta no es solo una marca; es una forma de entender el juego, dentro y fuera de la cancha."
+  },
+  "/terms": {
+    "title": "Términos y Condiciones | CeroCuarenta",
+    "description": "Términos y condiciones de CeroCuarenta: envíos a todo Chile y cambios o devoluciones dentro de 10 días."
+  },
+  "/privacy": {
+    "title": "Política de Privacidad | CeroCuarenta",
+    "description": "Cómo CeroCuarenta recopila y usa tus datos personales para procesar tus pedidos."
+  }
+}
