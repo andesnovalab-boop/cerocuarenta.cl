@@ -115,10 +115,6 @@ export const Orders: React.FC = () => {
                   <p className="text-xs text-court-ink/60 mb-6 leading-relaxed">
                     {order.shipping_address?.address}, {order.shipping_address?.commune}, {order.shipping_address?.region}
                   </p>
-                  
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-court-ink/30 text-center mt-2">
-                    Boleta disponible próximamente
-                  </p>
                 </div>
               </div>
             </div>

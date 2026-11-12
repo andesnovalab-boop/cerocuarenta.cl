@@ -122,7 +122,7 @@ export const Success: React.FC = () => {
             </div>
             <div className="flex gap-6 items-start">
               <div className="w-10 h-10 bg-court-olive/5 rounded-full flex items-center justify-center font-bitter italic text-lg text-court-olive shadow-sm flex-shrink-0">3</div>
-              <p className="text-sm text-court-ink/60 font-medium leading-relaxed">Podrás descargar tu boleta electrónica y seguir el estado de tu envío desde el panel de pedidos.</p>
+              <p className="text-sm text-court-ink/60 font-medium leading-relaxed">Si compraste con tu cuenta, puedes revisar tu pedido cuando quieras en Mis Pedidos.</p>
             </div>
           </div>
         </div>
